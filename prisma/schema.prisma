@@ -203,7 +203,6 @@ model CustomerAddress {
   customerId  Int
   street      String
   houseNumber String
-  mahalla     String?
   area        String?
   postalCode  String?
   city        String

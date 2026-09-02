@@ -11,7 +11,6 @@ export interface CustomerView {
     id: number;
     street: string;
     houseNumber: string;
-    mahalla: string | null;
     area: string | null;
     postalCode: string | null;
     city: string;
@@ -27,7 +26,6 @@ function mapCustomer(c: {
     id: number;
     street: string;
     houseNumber: string;
-    mahalla: string | null;
     area: string | null;
     postalCode: string | null;
     city: string;
@@ -48,7 +46,6 @@ function mapCustomer(c: {
           id: addr.id,
           street: addr.street,
           houseNumber: addr.houseNumber,
-          mahalla: addr.mahalla,
           area: addr.area,
           postalCode: addr.postalCode,
           city: addr.city,

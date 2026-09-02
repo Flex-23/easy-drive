@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { MapPin, Search, Check, UserCheck } from "lucide-react";
+import { MapPin, Search, Check, UserCheck, Eraser } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
@@ -97,6 +97,15 @@ export function CustomerSelectModal({
     setStreetQuery(c.address?.street ?? "");
   }
 
+  function clearForm() {
+    setForm({ ...emptyForm });
+    setExistingId(null);
+    setMatches([]);
+    setStreetQuery("");
+    setStreetOpen(false);
+    setErrors({});
+  }
+
   function pickStreet(entry: StreetEntry) {
     setStreetQuery(entry.street);
     setStreetOpen(false);
@@ -175,15 +184,26 @@ export function CustomerSelectModal({
       onClose={onClose}
       closeLabel={dict.common.close}
       title={dict.customer.selectCustomer}
+      maxWidth="max-w-4xl"
       footer={
-        <button
-          onClick={attach}
-          disabled={pending}
-          className="press flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-accent py-3 font-bold text-accent-fg hover:bg-accent-strong disabled:opacity-50"
-        >
-          <Check className="size-5" />
-          {dict.customer.attach}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={clearForm}
+            disabled={pending}
+            className="press flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-btn)] border border-border py-3 font-semibold text-text-muted hover:bg-surface-muted disabled:opacity-50"
+          >
+            <Eraser className="size-5" />
+            {dict.common.clear}
+          </button>
+          <button
+            onClick={attach}
+            disabled={pending}
+            className="press flex flex-[2] items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-accent py-3 font-bold text-accent-fg hover:bg-accent-strong disabled:opacity-50"
+          >
+            <Check className="size-5" />
+            {dict.customer.attach}
+          </button>
+        </div>
       }
     >
       <div className="grid grid-cols-2 gap-3">

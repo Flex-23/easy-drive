@@ -104,7 +104,6 @@ export async function upsertCustomer(
             id: addr.id,
             street: addr.street,
             houseNumber: addr.houseNumber,
-            mahalla: addr.mahalla,
             area: addr.area,
             postalCode: addr.postalCode,
             city: addr.city,

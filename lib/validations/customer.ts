@@ -20,7 +20,6 @@ export const customerSchema = z.object({
     .object({
       street: z.string().trim().min(1, "required").max(120),
       houseNumber: z.string().trim().min(1, "required").max(20),
-      mahalla: z.string().trim().max(80).optional().nullable(),
       area: z.string().trim().max(80).optional().nullable(),
       city: z.string().trim().min(1, "required").max(80),
       postalCode: z.string().trim().max(12).optional().nullable(),

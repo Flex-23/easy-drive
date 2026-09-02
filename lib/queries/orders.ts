@@ -62,7 +62,6 @@ async function toOrderCards(where: object): Promise<OrderCard[]> {
     address: o.address
       ? [
           `${o.address.street} ${o.address.houseNumber}`,
-          o.address.mahalla,
           o.address.area,
           o.address.postalCode
             ? `${o.address.postalCode} ${o.address.city}`
