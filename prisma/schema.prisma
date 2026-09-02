@@ -231,6 +231,7 @@ model Order {
   total          Decimal        @db.Decimal(10, 2) @default(0.00)
   paymentMethod  PaymentMethod?
   paidAt         DateTime?
+  driverNumber   Int?
   cashierId      Int
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -246,6 +247,7 @@ model Order {
   @@index([customerId])
   @@index([cashierId])
   @@index([createdAt])
+  @@index([driverNumber])
 }
 
 model OrderLine {

@@ -57,14 +57,14 @@ npx prisma db seed              # idempotent: 15 categories, 65 items, staff,
 npm run dev                     # http://localhost:3000  (Turbopack)
 ```
 
-Visiting `/` redirects to the stored/default locale (`/ar`). The app opens on a
-**Switch User** PIN screen — pick a staff member and enter their PIN:
+Visiting `/` redirects to the stored/default locale (`/ar`) and opens directly
+on the **New Order** screen. The app currently runs under a single active user
+(a dedicated admin/role system will replace this later).
 
-| Staff          | Role     | PIN  |
-| -------------- | -------- | ---- |
-| Amir Hassan    | Admin    | 1234 |
-| Lena Müller    | Cashier  | 2345 |
-| Jonas Weber    | Cashier  | 3456 |
+Screens (icon rail): **New Order**, **Fahrer** (driver dispatch board),
+**Dashboard**, **Daily Report**, **Settings**. On the driver board, select a
+pending delivery order, type a driver number and press **Enter** to dispatch it;
+you can also flag it paid-online or cancel it.
 
 Switch language any time with the **ع / DE** toggle in the top bar; it persists
 across sessions. Theme (light / dark / system) toggles next to it.

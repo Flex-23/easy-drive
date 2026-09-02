@@ -33,9 +33,34 @@
     "dashboard": "لوحة التحكم",
     "newOrder": "طلب جديد",
     "onlineOrders": "طلبات الإنترنت",
+    "drivers": "السائقون",
     "dailyReport": "التقرير اليومي",
     "settings": "الإعدادات",
     "switchUser": "تبديل المستخدم"
+  },
+  "drivers": {
+    "title": "نظرة السائقين",
+    "pending": "طلبات قيد الانتظار",
+    "assigned": "قيد التوصيل",
+    "orderNo": "رقم",
+    "amount": "المبلغ",
+    "driverId": "رقم السائق",
+    "driverInputHint": "رقم السائق ثم Enter",
+    "assign": "إسناد",
+    "paidOnline": "مدفوع أونلاين",
+    "cancel": "إلغاء الطلب",
+    "count": "العدد",
+    "sum": "المجموع",
+    "noPending": "لا توجد طلبات قيد الانتظار",
+    "noAssigned": "لا توجد طلبات قيد التوصيل",
+    "selectHint": "اختر طلباً لعرض تفاصيله",
+    "items": "الأصناف",
+    "address": "العنوان",
+    "paid": "مدفوع",
+    "unpaid": "غير مدفوع",
+    "driver": "سائق",
+    "refresh": "تحديث",
+    "actions": "إجراءات الطلب"
   },
   "topbar": {
     "support": "الدعم",
@@ -243,6 +268,8 @@
     "settingsSaved": "تم حفظ الإعدادات",
     "onlineOrderAccepted": "تم قبول الطلب",
     "onlineOrderRejected": "تم رفض الطلب",
+    "driverAssigned": "تم إسناد الطلب للسائق",
+    "paidOnlineMarked": "تم وضع علامة مدفوع أونلاين",
     "genericError": "حدث خطأ، حاول مرة أخرى"
   },
   "validation": {

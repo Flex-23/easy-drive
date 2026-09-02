@@ -12,7 +12,7 @@ import { isLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import type { ActionResult, ReceiptData } from "@/types/order";
 
 function revalidateAll(locale: Locale) {
-  for (const p of ["", "/dashboard", "/daily-report"]) {
+  for (const p of ["", "/dashboard", "/daily-report", "/drivers"]) {
     revalidatePath(`/${locale}${p}`);
   }
 }
@@ -179,7 +179,9 @@ export async function payOrder(
         data: {
           orderNumber,
           type: parsed.data.type,
-          status: "COMPLETED",
+          // Paid delivery orders await a driver on the dispatch board;
+          // everything else is finished at the counter.
+          status: parsed.data.type === "DELIVERY" ? "PREPARING" : "COMPLETED",
           source: "POS",
           customerId: parsed.data.customerId ?? null,
           addressId: parsed.data.addressId ?? null,

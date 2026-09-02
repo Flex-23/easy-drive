@@ -108,19 +108,21 @@ export interface DashboardData {
 export async function getDashboard(now = new Date()): Promise<DashboardData> {
   const { start, end } = dayBounds(now);
 
-  const todaysCompleted = await db.order.findMany({
+  // Revenue counts money actually collected (paid orders), regardless of
+  // whether a delivery is still out with a driver.
+  const todaysPaid = await db.order.findMany({
     where: {
-      status: "COMPLETED",
-      createdAt: { gte: start, lt: end },
+      paidAt: { gte: start, lt: end },
+      status: { not: "CANCELLED" },
     },
-    select: { total: true, createdAt: true },
+    select: { total: true, paidAt: true },
   });
 
-  const revenueToday = todaysCompleted.reduce(
+  const revenueToday = todaysPaid.reduce(
     (acc, o) => acc + Number(o.total.toString()),
     0,
   );
-  const orderCount = todaysCompleted.length;
+  const orderCount = todaysPaid.length;
   const avgTicket = orderCount > 0 ? revenueToday / orderCount : 0;
 
   const activeDeliveries = await db.order.count({
@@ -132,8 +134,8 @@ export async function getDashboard(now = new Date()): Promise<DashboardData> {
 
   const buckets = new Map<number, number>();
   for (let h = 9; h <= 23; h++) buckets.set(h, 0);
-  for (const o of todaysCompleted) {
-    const h = o.createdAt.getHours();
+  for (const o of todaysPaid) {
+    const h = (o.paidAt ?? start).getHours();
     buckets.set(h, (buckets.get(h) ?? 0) + Number(o.total.toString()));
   }
   const revenueByHour = [...buckets.entries()]
@@ -212,13 +214,14 @@ export async function getDailyReport(date: Date): Promise<DailyReport> {
     total: Number(o.total.toString()),
   }));
 
-  const completed = rows.filter((r) => r.status === "COMPLETED");
-  const totalRevenue = completed.reduce((acc, r) => acc + r.total, 0);
-  const totalOrders = completed.length;
+  // Paid orders drive the revenue figures (a delivery can be paid but still out).
+  const paid = rows.filter((r) => r.paymentMethod !== null);
+  const totalRevenue = paid.reduce((acc, r) => acc + r.total, 0);
+  const totalOrders = paid.length;
 
   const methods: PaymentMethod[] = ["CASH", "CARD", "ONLINE"];
   const byMethod = methods.map((method) => {
-    const subset = completed.filter((r) => r.paymentMethod === method);
+    const subset = paid.filter((r) => r.paymentMethod === method);
     return {
       method,
       count: subset.length,

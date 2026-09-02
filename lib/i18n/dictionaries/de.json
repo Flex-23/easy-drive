@@ -33,9 +33,34 @@
     "dashboard": "Übersicht",
     "newOrder": "Neue Bestellung",
     "onlineOrders": "Online-Bestellungen",
+    "drivers": "Fahrer",
     "dailyReport": "Tagesbericht",
     "settings": "Einstellungen",
     "switchUser": "Benutzer wechseln"
+  },
+  "drivers": {
+    "title": "Fahrer Übersicht",
+    "pending": "Offene Bestellungen",
+    "assigned": "In Zustellung",
+    "orderNo": "Nr.",
+    "amount": "Betrag",
+    "driverId": "Fahrer-Nr.",
+    "driverInputHint": "Fahrer-Nr., dann Enter",
+    "assign": "Zuweisen",
+    "paidOnline": "Online bezahlt",
+    "cancel": "Stornieren",
+    "count": "Anzahl",
+    "sum": "Summe",
+    "noPending": "Keine offenen Bestellungen",
+    "noAssigned": "Keine Bestellungen in Zustellung",
+    "selectHint": "Bestellung wählen, um Details zu sehen",
+    "items": "Artikel",
+    "address": "Adresse",
+    "paid": "Bezahlt",
+    "unpaid": "Offen",
+    "driver": "Fahrer",
+    "refresh": "Aktualisieren",
+    "actions": "Aktionen"
   },
   "topbar": {
     "support": "Support",
@@ -243,6 +268,8 @@
     "settingsSaved": "Einstellungen gespeichert",
     "onlineOrderAccepted": "Bestellung angenommen",
     "onlineOrderRejected": "Bestellung abgelehnt",
+    "driverAssigned": "Bestellung dem Fahrer zugewiesen",
+    "paidOnlineMarked": "Als online bezahlt markiert",
     "genericError": "Ein Fehler ist aufgetreten, bitte erneut versuchen"
   },
   "validation": {
