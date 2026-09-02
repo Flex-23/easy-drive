@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
-import { requireCashier } from "@/lib/session";
 import { getMenu } from "@/lib/queries/menu";
 import { getSettings } from "@/lib/queries/settings";
 import { getStreets } from "@/lib/data/streets";
@@ -13,7 +12,6 @@ export default async function NewOrderPage({
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  await requireCashier(locale);
 
   const [categories, settings] = await Promise.all([
     getMenu(locale),

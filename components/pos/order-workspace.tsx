@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { UserRound, UserPlus, X } from "lucide-react";
+import { UserPlus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { computeOrderTotals } from "@/lib/pricing";
 import { useToast } from "@/components/ui/toast";
@@ -36,7 +36,6 @@ export function OrderWorkspace({
   const [pending, start] = useTransition();
 
   const [orderType, setOrderType] = useState<OrderType>("PICKUP");
-  const [tableNumber, setTableNumber] = useState("");
   const [lines, setLines] = useState<CartLine[]>([]);
   const [discountCents, setDiscountCents] = useState(0);
   const [customer, setCustomer] = useState<CustomerView | null>(null);
@@ -83,14 +82,13 @@ export function OrderWorkspace({
     setLines([]);
     setDiscountCents(0);
     setCustomer(null);
-    setTableNumber("");
   }
 
   function buildPayload() {
     return {
       locale,
       type: orderType,
-      tableNumber: orderType === "DINE_IN" ? tableNumber : null,
+      tableNumber: null,
       customerId: customer?.id ?? null,
       addressId: orderType === "DELIVERY" ? customer?.address?.id ?? null : null,
       discountCents,
@@ -107,10 +105,6 @@ export function OrderWorkspace({
     if (orderType === "DELIVERY" && !customer?.address) {
       toast(dict.validation.addressRequired, "error");
       setShowCustomer(true);
-      return false;
-    }
-    if (orderType === "DINE_IN" && !tableNumber.trim()) {
-      toast(dict.validation.tableRequired, "error");
       return false;
     }
     return true;
@@ -160,34 +154,21 @@ export function OrderWorkspace({
   const needsAddress = orderType === "DELIVERY" && !customer?.address;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      {/* Header: order-type tabs + table selector + customer control */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2.5">
-        <div className="w-full max-w-md">
+    <div className="flex h-full min-h-0 flex-col bg-bg">
+      {/* Header: order-type + customer control */}
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+        <div className="w-full max-w-xs">
           <OrderTypeTabs value={orderType} onChange={setOrderType} />
         </div>
-
-        {orderType === "DINE_IN" ? (
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-text-muted">
-              {dict.orderType.tableNumber}
-            </label>
-            <input
-              value={tableNumber}
-              onChange={(e) => setTableNumber(e.target.value.replace(/[^0-9]/g, ""))}
-              inputMode="numeric"
-              placeholder={dict.orderType.selectTable}
-              className="tnum w-24 rounded-[var(--radius-btn)] border border-border bg-surface px-3 py-1.5 text-sm text-text outline-none focus:border-accent"
-            />
-          </div>
-        ) : null}
 
         <div className="ms-auto flex items-center gap-2">
           {customer ? (
             <div
-              className={`flex items-center gap-2 rounded-[var(--radius-btn)] border bg-surface px-3 py-1.5 ${needsAddress ? "border-danger" : "border-border"}`}
+              className={`flex items-center gap-2 rounded-[var(--radius-btn)] border bg-surface px-3 py-2 shadow-[var(--shadow-sm)] ${needsAddress ? "border-danger" : "border-border"}`}
             >
-              <UserRound className="size-4 text-accent" />
+              <span className="flex size-7 items-center justify-center rounded-full bg-accent-weak text-xs font-bold text-accent">
+                {customer.name.slice(0, 1)}
+              </span>
               <span className="max-w-40 truncate text-sm font-semibold text-text">
                 {customer.name}
               </span>
@@ -208,7 +189,7 @@ export function OrderWorkspace({
           ) : (
             <button
               onClick={() => setShowCustomer(true)}
-              className={`press flex items-center gap-2 rounded-[var(--radius-btn)] border px-3 py-1.5 text-sm font-semibold hover:bg-surface-muted ${needsAddress ? "border-danger text-danger" : "border-border text-text"}`}
+              className={`press flex items-center gap-2 rounded-[var(--radius-btn)] border px-4 py-2 text-sm font-semibold shadow-[var(--shadow-sm)] hover:bg-surface-muted ${needsAddress ? "border-danger text-danger" : "border-border bg-surface text-text"}`}
             >
               <UserPlus className="size-4" />
               {dict.customer.selectCustomer}
@@ -217,8 +198,9 @@ export function OrderWorkspace({
         </div>
       </div>
 
-      {/* Working area: cart + menu only */}
-      <div className="grid min-h-0 flex-1 grid-cols-[30fr_70fr] gap-3 p-3">
+      {/* Working area: menu (lead) + cart */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 px-4 pb-4 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <MenuBrowser categories={categories} onSelectItem={setActiveItem} />
         <CartColumn
           lines={lines}
           totals={totals}
@@ -231,7 +213,6 @@ export function OrderWorkspace({
           onHold={hold}
           onCharge={charge}
         />
-        <MenuBrowser categories={categories} onSelectItem={setActiveItem} />
       </div>
 
       <ProductModal item={activeItem} onClose={() => setActiveItem(null)} onAdd={addLine} />

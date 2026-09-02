@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { TrendingUp, ReceiptText, CircleDollarSign, Bike } from "lucide-react";
 import { isLocale, type Locale } from "@/lib/i18n/config";
-import { requireCashier } from "@/lib/session";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getDashboard } from "@/lib/queries/orders";
 import { formatMoney, formatNumber, formatTime } from "@/lib/money";
@@ -16,7 +15,6 @@ export default async function DashboardPage({
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
-  await requireCashier(locale);
 
   const dict = getDictionary(locale);
   const data = await getDashboard();

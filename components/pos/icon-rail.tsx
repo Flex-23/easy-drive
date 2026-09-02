@@ -5,10 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ShoppingBag,
-  Globe,
   ClipboardList,
   Settings,
-  UserRoundCog,
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
@@ -18,23 +16,20 @@ interface Item {
   href: string;
   label: string;
   icon: LucideIcon;
-  badge?: number;
 }
 
-export function IconRail({ pendingOnline }: { pendingOnline: number }) {
+export function IconRail() {
   const { locale, dict } = useI18n();
   const pathname = usePathname();
   const base = `/${locale}`;
 
   const top: Item[] = [
-    { href: `${base}/dashboard`, label: dict.nav.dashboard, icon: LayoutDashboard },
     { href: base, label: dict.nav.newOrder, icon: ShoppingBag },
-    { href: `${base}/online-orders`, label: dict.nav.onlineOrders, icon: Globe, badge: pendingOnline },
+    { href: `${base}/dashboard`, label: dict.nav.dashboard, icon: LayoutDashboard },
     { href: `${base}/daily-report`, label: dict.nav.dailyReport, icon: ClipboardList },
   ];
   const bottom: Item[] = [
     { href: `${base}/settings`, label: dict.nav.settings, icon: Settings },
-    { href: `${base}/switch-user`, label: dict.nav.switchUser, icon: UserRoundCog },
   ];
 
   const isActive = (href: string) =>
@@ -57,14 +52,7 @@ export function IconRail({ pendingOnline }: { pendingOnline: number }) {
         {active ? (
           <span className="absolute inset-y-1.5 start-0 w-1 rounded-full bg-accent" />
         ) : null}
-        <span className="relative">
-          <Icon className="size-6" />
-          {item.badge && item.badge > 0 ? (
-            <span className="absolute -end-2 -top-2 flex min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-4 text-white tnum">
-              {item.badge}
-            </span>
-          ) : null}
-        </span>
+        <Icon className="size-6" />
         <span className="text-center leading-tight">{item.label}</span>
       </Link>
     );

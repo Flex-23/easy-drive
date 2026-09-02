@@ -1,6 +1,6 @@
 "use client";
 
-import { UtensilsCrossed, ShoppingBag, Bike } from "lucide-react";
+import { ShoppingBag, Bike } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 
 export type OrderType = "DINE_IN" | "PICKUP" | "DELIVERY";
@@ -14,7 +14,6 @@ export function OrderTypeTabs({
 }) {
   const { dict } = useI18n();
   const tabs: { type: OrderType; label: string; icon: typeof Bike }[] = [
-    { type: "DINE_IN", label: dict.orderType.dineIn, icon: UtensilsCrossed },
     { type: "PICKUP", label: dict.orderType.pickup, icon: ShoppingBag },
     { type: "DELIVERY", label: dict.orderType.delivery, icon: Bike },
   ];
@@ -22,8 +21,8 @@ export function OrderTypeTabs({
   return (
     <div
       role="tablist"
-      aria-label={dict.orderType.dineIn}
-      className="grid grid-cols-3 gap-1 rounded-[var(--radius-btn)] border border-border bg-surface-muted p-1"
+      aria-label={dict.orderType.delivery}
+      className="grid grid-cols-2 gap-1 rounded-[var(--radius-btn)] border border-border bg-surface-muted p-1"
     >
       {tabs.map((t) => {
         const active = value === t.type;

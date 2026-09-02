@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { Banknote, CreditCard, Globe } from "lucide-react";
 import { isLocale, type Locale } from "@/lib/i18n/config";
-import { requireCashier } from "@/lib/session";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getDailyReport } from "@/lib/queries/orders";
 import { formatMoney, formatNumber, formatTime, formatDate } from "@/lib/money";
@@ -23,7 +22,6 @@ export default async function DailyReportPage({
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
-  await requireCashier(locale);
 
   const dict = getDictionary(locale);
   const sp = await searchParams;

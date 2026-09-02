@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/lib/i18n/config";
-import { requireCashier } from "@/lib/session";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getSettings } from "@/lib/queries/settings";
 import { SettingsForm } from "@/components/pos/settings-form";
@@ -13,7 +12,6 @@ export default async function SettingsPage({
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
-  await requireCashier(locale);
 
   const dict = getDictionary(locale);
   const settings = await getSettings();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Search, LayoutGrid, List, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, LayoutGrid, List } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { CategoryIcon } from "@/components/ui/icons";
 import { ProductCard } from "./product-card";
@@ -20,7 +20,7 @@ export function MenuBrowser({
   const [activeId, setActiveId] = useState<number>(categories[0]?.id ?? 0);
 
   const gridRef = useRef<HTMLDivElement>(null);
-  const sidebarRef = useRef<HTMLDivElement>(null);
+  const pillsRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<number, HTMLElement>>(new Map());
 
   const q = search.trim().toLowerCase();
@@ -47,6 +47,9 @@ export function MenuBrowser({
     if (el && container) {
       container.scrollTo({ top: el.offsetTop - 8, behavior: "smooth" });
     }
+    pillsRef.current
+      ?.querySelector<HTMLElement>(`[data-pill="${id}"]`)
+      ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }
 
   function onScroll() {
@@ -62,124 +65,97 @@ export function MenuBrowser({
     if (current !== activeId) setActiveId(current);
   }
 
-  function nudge(dir: -1 | 1) {
-    sidebarRef.current?.scrollBy({ top: dir * 160, behavior: "smooth" });
-  }
-
   return (
-    <div className="flex h-full min-h-0 gap-3">
-      {/* Column 3 — category sidebar */}
-      <div className="flex w-40 shrink-0 flex-col rounded-[var(--radius-card)] border border-border bg-surface">
-        <button
-          onClick={() => nudge(-1)}
-          className="press flex items-center justify-center py-1.5 text-text-faint hover:text-text"
-          aria-label={dict.common.back}
-        >
-          <ChevronUp className="size-4" />
-        </button>
-        <div ref={sidebarRef} className="min-h-0 flex-1 overflow-y-auto px-1.5">
-          {categories.map((c) => {
-            const active = c.id === activeId && !q;
-            return (
-              <button
-                key={c.id}
-                onClick={() => scrollToCategory(c.id)}
-                className={`press mb-1 flex w-full items-center gap-2 rounded-[var(--radius-btn)] px-2.5 py-2 text-start text-sm transition-colors ${
-                  active
-                    ? "bg-accent-weak font-bold text-accent"
-                    : "font-medium text-text-muted hover:bg-surface-muted hover:text-text"
-                }`}
-              >
-                <CategoryIcon name={c.icon} className="size-4 shrink-0" />
-                <span className="truncate">{c.name}</span>
-              </button>
-            );
-          })}
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+      {/* Search + view toggle */}
+      <div className="flex items-center gap-2 border-b border-border p-3">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 text-text-faint start-3" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={dict.product.searchPlaceholder}
+            className="w-full rounded-[var(--radius-btn)] border border-border bg-surface-muted py-2.5 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent ps-9 pe-3"
+            aria-label={dict.common.search}
+          />
         </div>
-        <button
-          onClick={() => nudge(1)}
-          className="press flex items-center justify-center py-1.5 text-text-faint hover:text-text"
-          aria-label={dict.common.next}
-        >
-          <ChevronDown className="size-4" />
-        </button>
+        <div className="flex overflow-hidden rounded-[var(--radius-btn)] border border-border">
+          <button
+            onClick={() => setView("grid")}
+            aria-pressed={view === "grid"}
+            aria-label={dict.product.gridView}
+            className={`press p-2.5 ${view === "grid" ? "bg-accent text-accent-fg" : "text-text-muted hover:text-text"}`}
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            onClick={() => setView("list")}
+            aria-pressed={view === "list"}
+            aria-label={dict.product.listView}
+            className={`press p-2.5 ${view === "list" ? "bg-accent text-accent-fg" : "text-text-muted hover:text-text"}`}
+          >
+            <List className="size-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Column 4 — product grid */}
-      <div className="flex min-w-0 flex-1 flex-col rounded-[var(--radius-card)] border border-border bg-surface">
-        <div className="flex items-center gap-2 border-b border-border p-2.5">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 text-text-faint start-3" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={dict.product.searchPlaceholder}
-              className="w-full rounded-[var(--radius-btn)] border border-border bg-surface-muted py-2 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent ps-9 pe-3"
-              aria-label={dict.common.search}
-            />
-          </div>
-          <div className="flex overflow-hidden rounded-[var(--radius-btn)] border border-border">
+      {/* Horizontal category bar */}
+      <div
+        ref={pillsRef}
+        className="flex gap-1.5 overflow-x-auto border-b border-border px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {categories.map((c) => {
+          const active = c.id === activeId && !q;
+          return (
             <button
-              onClick={() => setView("grid")}
-              aria-pressed={view === "grid"}
-              aria-label={dict.product.gridView}
-              className={`press p-2 ${view === "grid" ? "bg-accent text-accent-fg" : "text-text-muted hover:text-text"}`}
+              key={c.id}
+              data-pill={c.id}
+              onClick={() => scrollToCategory(c.id)}
+              className={`press flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                active
+                  ? "bg-accent text-accent-fg"
+                  : "bg-surface-muted text-text-muted hover:text-text"
+              }`}
             >
-              <LayoutGrid className="size-4" />
+              <CategoryIcon name={c.icon} className="size-4" />
+              <span className="whitespace-nowrap">{c.name}</span>
             </button>
-            <button
-              onClick={() => setView("list")}
-              aria-pressed={view === "list"}
-              aria-label={dict.product.listView}
-              className={`press p-2 ${view === "list" ? "bg-accent text-accent-fg" : "text-text-muted hover:text-text"}`}
-            >
-              <List className="size-4" />
-            </button>
-          </div>
-        </div>
+          );
+        })}
+      </div>
 
-        <div
-          ref={gridRef}
-          onScroll={onScroll}
-          className="min-h-0 flex-1 overflow-y-auto p-3"
-        >
-          {filtered.length === 0 ? (
-            <p className="mt-10 text-center text-sm text-text-muted">
-              {dict.product.noProducts}
-            </p>
-          ) : (
-            filtered.map((c) => (
-              <section
-                key={c.id}
-                ref={(el) => {
-                  if (el) sectionRefs.current.set(c.id, el);
-                }}
-                className="mb-5 scroll-mt-2"
+      {/* Product grid */}
+      <div ref={gridRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-3">
+        {filtered.length === 0 ? (
+          <p className="mt-10 text-center text-sm text-text-muted">{dict.product.noProducts}</p>
+        ) : (
+          filtered.map((c) => (
+            <section
+              key={c.id}
+              ref={(el) => {
+                if (el) sectionRefs.current.set(c.id, el);
+              }}
+              className="mb-6 scroll-mt-2"
+            >
+              <h3 className="mb-2.5 flex items-center gap-2 text-sm font-bold text-text">
+                <CategoryIcon name={c.icon} className="size-4 text-accent" />
+                {c.name}
+                <span className="tnum text-xs font-normal text-text-faint">({c.items.length})</span>
+              </h3>
+              <div
+                className={
+                  view === "grid"
+                    ? "grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))]"
+                    : "flex flex-col gap-2"
+                }
               >
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-text-muted">
-                  <CategoryIcon name={c.icon} className="size-4 text-accent" />
-                  {c.name}
-                </h3>
-                <div
-                  className={
-                    view === "grid"
-                      ? "grid grid-cols-2 gap-2.5 lg:grid-cols-3"
-                      : "flex flex-col gap-2"
-                  }
-                >
-                  {c.items.map((item) => (
-                    <ProductCard
-                      key={item.id}
-                      item={item}
-                      view={view}
-                      onSelect={onSelectItem}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))
-          )}
-        </div>
+                {c.items.map((item) => (
+                  <ProductCard key={item.id} item={item} view={view} onSelect={onSelectItem} />
+                ))}
+              </div>
+            </section>
+          ))
+        )}
       </div>
     </div>
   );

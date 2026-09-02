@@ -12,7 +12,7 @@ import { isLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import type { ActionResult, ReceiptData } from "@/types/order";
 
 function revalidateAll(locale: Locale) {
-  for (const p of ["", "/dashboard", "/online-orders", "/daily-report"]) {
+  for (const p of ["", "/dashboard", "/daily-report"]) {
     revalidatePath(`/${locale}${p}`);
   }
 }

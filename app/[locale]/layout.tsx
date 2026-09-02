@@ -7,7 +7,6 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getSettings } from "@/lib/queries/settings";
 import { getCurrentCashier } from "@/lib/session";
 import { checkDbHealth } from "@/lib/queries/health";
-import { getPendingOnlineCount } from "@/lib/queries/orders";
 import { Providers } from "@/components/providers";
 import { IconRail } from "@/components/pos/icon-rail";
 import { TopBar } from "@/components/pos/top-bar";
@@ -36,6 +35,9 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
+// The POS is backed by a live database — always render per request.
+export const dynamic = "force-dynamic";
+
 export default async function LocaleLayout({
   children,
   params,
@@ -48,11 +50,10 @@ export default async function LocaleLayout({
   const locale: Locale = raw;
 
   const dict = getDictionary(locale);
-  const [settings, cashier, dbHealthy, pendingOnline] = await Promise.all([
+  const [settings, cashier, dbHealthy] = await Promise.all([
     getSettings(),
     getCurrentCashier(),
     checkDbHealth(),
-    getPendingOnlineCount(),
   ]);
 
   return (
@@ -69,7 +70,7 @@ export default async function LocaleLayout({
       <body>
         <Providers locale={locale} dict={dict}>
           <div className="flex h-dvh w-full overflow-hidden">
-            <IconRail pendingOnline={pendingOnline} />
+            <IconRail />
             <div className="flex min-w-0 flex-1 flex-col">
               <TopBar
                 restaurantName={settings.restaurantName}
