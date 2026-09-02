@@ -1,26 +1,207 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Easy Drive design tokens.
+ * Every color in the app comes from one of these tokens — no hardcoded hex
+ * outside this file. Changing --accent re-skins the whole product.
+ * Light and dark are both first-class and deliberately designed.
+ */
+
+:root,
+[data-theme="light"] {
+  --bg: #f5f3ef;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-muted: #eeeae3;
+  --border: #e3ded5;
+  --border-strong: #d4cec2;
+  --text: #1b1917;
+  --text-muted: #6c665d;
+  --text-faint: #9a938a;
+
+  --accent: #d9531e;
+  --accent-fg: #ffffff;
+  --accent-weak: rgba(217, 83, 30, 0.1);
+  --accent-strong: #bf4415;
+
+  --success: #2f8f4e;
+  --success-weak: rgba(47, 143, 78, 0.12);
+  --warning: #bd8410;
+  --warning-weak: rgba(189, 132, 16, 0.14);
+  --danger: #c8402f;
+  --danger-weak: rgba(200, 64, 47, 0.12);
+
+  --shadow-sm: 0 1px 2px rgba(28, 24, 18, 0.06);
+  --shadow-md: 0 2px 8px rgba(28, 24, 18, 0.08), 0 1px 2px rgba(28, 24, 18, 0.05);
+  --shadow-lg: 0 12px 32px rgba(28, 24, 18, 0.14), 0 4px 10px rgba(28, 24, 18, 0.08);
+  --ring: rgba(217, 83, 30, 0.45);
+}
+
+[data-theme="dark"] {
+  --bg: #16140f;
+  --surface: #201e18;
+  --surface-raised: #272420;
+  --surface-muted: #221f1a;
+  --border: #34302a;
+  --border-strong: #423d35;
+  --text: #f2efe9;
+  --text-muted: #a49d90;
+  --text-faint: #766f64;
+
+  --accent: #ef6a34;
+  --accent-fg: #1a1610;
+  --accent-weak: rgba(239, 106, 52, 0.16);
+  --accent-strong: #f5814f;
+
+  --success: #4fb06d;
+  --success-weak: rgba(79, 176, 109, 0.16);
+  --warning: #d9a341;
+  --warning-weak: rgba(217, 163, 65, 0.16);
+  --danger: #e2634f;
+  --danger-weak: rgba(226, 99, 79, 0.16);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --ring: rgba(239, 106, 52, 0.5);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-weak: var(--accent-weak);
+  --color-accent-strong: var(--accent-strong);
+  --color-success: var(--success);
+  --color-success-weak: var(--success-weak);
+  --color-warning: var(--warning);
+  --color-warning-weak: var(--warning-weak);
+  --color-danger: var(--danger);
+  --color-danger-weak: var(--danger-weak);
+
+  --font-latin: var(--font-inter);
+  --font-arabic: var(--font-arabic-family);
+
+  --radius-card: 0.75rem;
+  --radius-btn: 0.625rem;
+
+  --shadow-e1: var(--shadow-sm);
+  --shadow-e2: var(--shadow-md);
+  --shadow-e3: var(--shadow-lg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-latin), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Arabic type needs more line-height and its own optical family. */
+html[dir="rtl"] body {
+  font-family: var(--font-arabic), system-ui, sans-serif;
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+
+/* Tabular numerals everywhere numbers matter (prices, totals, clock, keypad). */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Calm, thin scrollbars that match the surface. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---- Micro-interactions (150–250ms, eased, direction-aware) ---- */
+@keyframes ed-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ed-scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes ed-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: ed-fade-in 0.18s ease-out both; }
+.animate-scale-in { animation: ed-scale-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.animate-slide-in { animation: ed-slide-in 0.2s ease-out both; }
+
+.press {
+  transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+.card-lift {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .press:active { transform: none; }
+  .card-lift:hover { transform: none; }
+}
+
+/* Print: only the receipt shows. */
+@media print {
+  body * { visibility: hidden; }
+  .receipt-print, .receipt-print * { visibility: visible; }
+  .receipt-print {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 100%;
+  }
 }

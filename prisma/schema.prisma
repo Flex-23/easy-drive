@@ -1,0 +1,299 @@
+// Easy Drive — Prisma schema
+// MySQL (local XAMPP). All money is Decimal(10,2). Charset utf8mb4 for Arabic + German.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Locale {
+  ar
+  de
+}
+
+enum SelectionType {
+  SINGLE
+  MULTIPLE
+}
+
+enum OrderType {
+  DINE_IN
+  PICKUP
+  DELIVERY
+}
+
+enum OrderStatus {
+  DRAFT
+  HELD
+  PENDING
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderSource {
+  POS
+  ONLINE
+  PHONE
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+}
+
+enum UserRole {
+  ADMIN
+  CASHIER
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  LOCALE
+}
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  slug        String  @unique
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+  icon        String? // lucide icon name
+
+  items        MenuItem[]
+  translations CategoryTranslation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model CategoryTranslation {
+  id          Int     @id @default(autoincrement())
+  categoryId  Int
+  locale      Locale
+  name        String
+  description String? @db.Text
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
+}
+
+model MenuItem {
+  id         Int     @id @default(autoincrement())
+  itemNumber Int     @unique
+  basePrice  Decimal @db.Decimal(10, 2)
+  categoryId Int
+  isPopular  Boolean @default(false)
+  isActive   Boolean @default(true)
+  sortOrder  Int     @default(0)
+  imageUrl   String?
+
+  category     Category              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  optionGroups OptionGroup[]
+  translations MenuItemTranslation[]
+  orderLines   OrderLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([isPopular])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model MenuItemTranslation {
+  id          Int     @id @default(autoincrement())
+  menuItemId  Int
+  locale      Locale
+  name        String
+  description String? @db.Text
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, locale])
+  @@index([locale])
+  @@index([name])
+}
+
+model OptionGroup {
+  id            Int           @id @default(autoincrement())
+  menuItemId    Int
+  selectionType SelectionType
+  isRequired    Boolean       @default(false)
+  isCollapsible Boolean       @default(false)
+  sortOrder     Int           @default(0)
+
+  menuItem     MenuItem                 @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  choices      OptionChoice[]
+  translations OptionGroupTranslation[]
+
+  @@index([menuItemId])
+}
+
+model OptionGroupTranslation {
+  id            Int     @id @default(autoincrement())
+  optionGroupId Int
+  locale        Locale
+  name          String
+  description   String? @db.Text
+
+  optionGroup OptionGroup @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([optionGroupId, locale])
+  @@index([locale])
+}
+
+model OptionChoice {
+  id            Int     @id @default(autoincrement())
+  optionGroupId Int
+  priceDelta    Decimal @db.Decimal(10, 2) @default(0.00)
+  isDefault     Boolean @default(false)
+  sortOrder     Int     @default(0)
+
+  optionGroup  OptionGroup               @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+  translations OptionChoiceTranslation[]
+
+  @@index([optionGroupId])
+}
+
+model OptionChoiceTranslation {
+  id             Int     @id @default(autoincrement())
+  optionChoiceId Int
+  locale         Locale
+  name           String
+  description    String? @db.Text
+
+  optionChoice OptionChoice @relation(fields: [optionChoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([optionChoiceId, locale])
+  @@index([locale])
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  email     String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses CustomerAddress[]
+  orders    Order[]
+
+  @@index([phone])
+  @@index([name])
+}
+
+model CustomerAddress {
+  id          Int     @id @default(autoincrement())
+  customerId  Int
+  street      String
+  houseNumber String
+  postalCode  String
+  city        String
+  notes       String? @db.Text
+  isDefault   Boolean @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId])
+}
+
+model Order {
+  id             Int            @id @default(autoincrement())
+  orderNumber    String         @unique
+  type           OrderType
+  status         OrderStatus    @default(DRAFT)
+  source         OrderSource    @default(POS)
+  customerId     Int?
+  addressId      Int?
+  tableNumber    String?
+  subtotal       Decimal        @db.Decimal(10, 2) @default(0.00)
+  discountAmount Decimal        @db.Decimal(10, 2) @default(0.00)
+  deliveryFee    Decimal        @db.Decimal(10, 2) @default(0.00)
+  taxAmount      Decimal        @db.Decimal(10, 2) @default(0.00)
+  total          Decimal        @db.Decimal(10, 2) @default(0.00)
+  paymentMethod  PaymentMethod?
+  paidAt         DateTime?
+  cashierId      Int
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  customer Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  address  CustomerAddress? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  cashier  User             @relation(fields: [cashierId], references: [id])
+  lines    OrderLine[]
+
+  @@index([status])
+  @@index([source])
+  @@index([type])
+  @@index([customerId])
+  @@index([cashierId])
+  @@index([createdAt])
+}
+
+model OrderLine {
+  id               Int     @id @default(autoincrement())
+  orderId          Int
+  menuItemId       Int?
+  itemNameSnapshot String
+  unitPrice        Decimal @db.Decimal(10, 2)
+  quantity         Int
+  lineTotal        Decimal @db.Decimal(10, 2)
+  kitchenNotes     String? @db.Text
+
+  order    Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem?         @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  options  OrderLineOption[]
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model OrderLineOption {
+  id                Int     @id @default(autoincrement())
+  orderLineId       Int
+  groupNameSnapshot String
+  choiceNameSnapshot String
+  priceDelta        Decimal @db.Decimal(10, 2) @default(0.00)
+
+  orderLine OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+
+  @@index([orderLineId])
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String
+  pin         String // hashed, never plain
+  role        UserRole @default(CASHIER)
+  isActive    Boolean  @default(true)
+  avatarColor String   @default("#2563eb")
+  createdAt   DateTime @default(now())
+
+  orders Order[]
+
+  @@index([isActive])
+}
+
+model Setting {
+  key       String      @id
+  value     String      @db.Text
+  type      SettingType @default(STRING)
+  updatedAt DateTime    @updatedAt
+}
