@@ -11,6 +11,7 @@ import { getPendingOnlineCount } from "@/lib/queries/orders";
 import { Providers } from "@/components/providers";
 import { IconRail } from "@/components/pos/icon-rail";
 import { TopBar } from "@/components/pos/top-bar";
+import { InlineScript } from "@/components/ui/inline-script";
 import pkg from "@/package.json";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -63,7 +64,7 @@ export default async function LocaleLayout({
       className={`${inter.variable} ${plexArabic.variable}`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+        <InlineScript html={themeInit} />
       </head>
       <body>
         <Providers locale={locale} dict={dict}>
