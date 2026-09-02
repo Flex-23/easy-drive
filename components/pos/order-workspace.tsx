@@ -18,15 +18,18 @@ import { holdOrder, payOrder } from "@/app/actions/orders";
 import type { CategoryView, MenuItemView } from "@/types/menu";
 import type { CartLine, ReceiptData } from "@/types/order";
 import type { CustomerView } from "@/lib/queries/customers";
+import type { StreetEntry } from "@/types/street";
 
 export function OrderWorkspace({
   categories,
   taxRate,
   deliveryFee,
+  streets,
 }: {
   categories: CategoryView[];
   taxRate: number;
   deliveryFee: number;
+  streets: StreetEntry[];
 }) {
   const { locale, dict } = useI18n();
   const { toast } = useToast();
@@ -253,6 +256,7 @@ export function OrderWorkspace({
       {showCustomer ? (
         <CustomerSelectModal
           open
+          streets={streets}
           onClose={() => setShowCustomer(false)}
           onAttach={(c) => {
             setCustomer(c);
