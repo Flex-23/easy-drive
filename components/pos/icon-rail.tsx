@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ShoppingBag,
-  Bike,
+  Package,
   ClipboardList,
   Settings,
   type LucideIcon,
@@ -26,7 +26,7 @@ export function IconRail() {
 
   const top: Item[] = [
     { href: base, label: dict.nav.newOrder, icon: ShoppingBag },
-    { href: `${base}/drivers`, label: dict.nav.drivers, icon: Bike },
+    { href: `${base}/drivers`, label: dict.nav.drivers, icon: Package },
     { href: `${base}/dashboard`, label: dict.nav.dashboard, icon: LayoutDashboard },
     { href: `${base}/daily-report`, label: dict.nav.dailyReport, icon: ClipboardList },
   ];

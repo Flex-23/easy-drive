@@ -6,7 +6,7 @@ import {
   RefreshCw,
   CreditCard,
   XCircle,
-  Bike,
+  ClipboardList,
   Phone,
   MapPin,
   Package,
@@ -33,7 +33,6 @@ export function DriverBoard({ board }: { board: Board }) {
   const [driverInput, setDriverInput] = useState("");
   const driverRef = useRef<HTMLInputElement>(null);
 
-  // Keep the board fresh as the cashier submits new orders.
   useEffect(() => {
     const id = setInterval(() => router.refresh(), 15000);
     return () => clearInterval(id);
@@ -41,10 +40,12 @@ export function DriverBoard({ board }: { board: Board }) {
 
   const selected = useMemo<DriverOrder | null>(
     () =>
-      [...board.unassigned, ...board.assigned].find((o) => o.id === selectedId) ??
+      [...board.pending, ...board.processed].find((o) => o.id === selectedId) ??
       null,
     [board, selectedId],
   );
+
+  const locked = !selected || selected.cancelled;
 
   function select(o: DriverOrder) {
     setSelectedId(o.id);
@@ -53,7 +54,7 @@ export function DriverBoard({ board }: { board: Board }) {
   }
 
   function doAssign() {
-    if (!selected) return;
+    if (locked || !selected) return;
     const n = Number(driverInput.trim());
     if (!Number.isInteger(n) || n < 1) return;
     start(async () => {
@@ -69,7 +70,7 @@ export function DriverBoard({ board }: { board: Board }) {
   }
 
   function doPaidOnline() {
-    if (!selected) return;
+    if (locked || !selected) return;
     start(async () => {
       const res = await markPaidOnline(selected.id, locale);
       toast(res.ok ? dict.toast.paidOnlineMarked : dict.toast.genericError, res.ok ? "success" : "error");
@@ -78,12 +79,11 @@ export function DriverBoard({ board }: { board: Board }) {
   }
 
   function doCancel() {
-    if (!selected) return;
+    if (locked || !selected) return;
     start(async () => {
       const res = await cancelDriverOrder(selected.id, locale);
       if (res.ok) {
         toast(dict.toast.orderCancelled, "success");
-        setSelectedId(null);
         router.refresh();
       } else {
         toast(dict.toast.genericError, "error");
@@ -101,52 +101,61 @@ export function DriverBoard({ board }: { board: Board }) {
             {dict.drivers.pending}
           </h2>
           <span className="tnum inline-flex min-w-6 items-center justify-center rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-fg">
-            {board.unassignedCount}
+            {board.pendingCount}
           </span>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          {board.unassigned.length === 0 ? (
+          {board.pending.length === 0 ? (
             <p className="mt-8 text-center text-sm text-text-muted">{dict.drivers.noPending}</p>
           ) : (
-            board.unassigned.map((o) => (
+            board.pending.map((o) => (
               <OrderRow
                 key={o.id}
                 order={o}
                 active={o.id === selectedId}
                 onClick={() => select(o)}
                 locale={locale}
-                paidLabel={dict.drivers.paid}
-                unpaidLabel={dict.drivers.unpaid}
+                dict={dict}
               />
             ))
           )}
         </div>
 
+        {/* Pending totals */}
+        <div className="grid grid-cols-2 gap-2 border-t border-border px-3 pt-3">
+          <div className="rounded-[var(--radius-btn)] border border-border p-2 text-center">
+            <p className="text-xs text-text-muted">{dict.drivers.count}</p>
+            <p className="tnum text-base font-bold text-text">{board.pendingCount}</p>
+          </div>
+          <div className="rounded-[var(--radius-btn)] border border-border p-2 text-center">
+            <p className="text-xs text-text-muted">{dict.drivers.sum}</p>
+            <p className="tnum text-base font-bold text-text">{formatMoney(board.pendingSum, locale)}</p>
+          </div>
+        </div>
+
         {/* Action bar for the selected order */}
-        <div className="border-t border-border p-3">
+        <div className="p-3">
           <div className="mb-2 flex items-center gap-2">
-            <div className="relative flex-1">
-              <input
-                ref={driverRef}
-                value={driverInput}
-                onChange={(e) => setDriverInput(e.target.value.replace(/[^0-9]/g, ""))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    doAssign();
-                  }
-                }}
-                inputMode="numeric"
-                disabled={!selected}
-                placeholder={dict.drivers.driverInputHint}
-                className="tnum w-full rounded-[var(--radius-btn)] border border-border bg-surface-muted px-3 py-2.5 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent disabled:opacity-50"
-                aria-label={dict.drivers.driverId}
-              />
-            </div>
+            <input
+              ref={driverRef}
+              value={driverInput}
+              onChange={(e) => setDriverInput(e.target.value.replace(/[^0-9]/g, ""))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  doAssign();
+                }
+              }}
+              inputMode="numeric"
+              disabled={locked}
+              placeholder={dict.drivers.driverInputHint}
+              className="tnum w-full flex-1 rounded-[var(--radius-btn)] border border-border bg-surface-muted px-3 py-2.5 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent disabled:opacity-50"
+              aria-label={dict.drivers.driverId}
+            />
             <button
               onClick={doAssign}
-              disabled={!selected || !driverInput.trim()}
+              disabled={locked || !driverInput.trim()}
               className="press flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-accent px-3 py-2.5 text-sm font-bold text-accent-fg hover:bg-accent-strong disabled:opacity-40"
             >
               <CornerDownLeft className="size-4" />
@@ -156,7 +165,7 @@ export function DriverBoard({ board }: { board: Board }) {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={doPaidOnline}
-              disabled={!selected}
+              disabled={locked}
               className="press flex items-center justify-center gap-1.5 rounded-[var(--radius-btn)] border border-border py-2 text-sm font-semibold text-text-muted hover:bg-surface-muted disabled:opacity-40"
             >
               <CreditCard className="size-4" />
@@ -164,7 +173,7 @@ export function DriverBoard({ board }: { board: Board }) {
             </button>
             <button
               onClick={doCancel}
-              disabled={!selected}
+              disabled={locked}
               className="press flex items-center justify-center gap-1.5 rounded-[var(--radius-btn)] border border-border py-2 text-sm font-semibold text-danger hover:bg-danger-weak disabled:opacity-40"
             >
               <XCircle className="size-4" />
@@ -174,12 +183,12 @@ export function DriverBoard({ board }: { board: Board }) {
         </div>
       </section>
 
-      {/* Section 2 — assigned / in transit */}
+      {/* Section 2 — processed (driver / paid online / cancelled) */}
       <section className="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
         <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
           <h2 className="flex items-center gap-2 font-bold text-text">
-            <Bike className="size-4 text-accent" />
-            {dict.drivers.assigned}
+            <ClipboardList className="size-4 text-accent" />
+            {dict.drivers.processed}
           </h2>
           <button
             onClick={() => router.refresh()}
@@ -192,19 +201,18 @@ export function DriverBoard({ board }: { board: Board }) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          {board.assigned.length === 0 ? (
+          {board.processed.length === 0 ? (
             <p className="mt-8 text-center text-sm text-text-muted">{dict.drivers.noAssigned}</p>
           ) : (
-            board.assigned.map((o) => (
+            board.processed.map((o) => (
               <OrderRow
                 key={o.id}
                 order={o}
                 active={o.id === selectedId}
                 onClick={() => select(o)}
                 locale={locale}
-                paidLabel={dict.drivers.paid}
-                unpaidLabel={dict.drivers.unpaid}
-                driverTag
+                dict={dict}
+                showTag
               />
             ))
           )}
@@ -213,11 +221,11 @@ export function DriverBoard({ board }: { board: Board }) {
         <div className="grid grid-cols-2 gap-2 border-t border-border p-3">
           <div className="rounded-[var(--radius-btn)] border border-border p-2.5 text-center">
             <p className="text-xs text-text-muted">{dict.drivers.count}</p>
-            <p className="tnum text-lg font-bold text-text">{board.assignedCount}</p>
+            <p className="tnum text-lg font-bold text-text">{board.processedCount}</p>
           </div>
           <div className="rounded-[var(--radius-btn)] border border-border p-2.5 text-center">
             <p className="text-xs text-text-muted">{dict.drivers.sum}</p>
-            <p className="tnum text-lg font-bold text-text">{formatMoney(board.assignedSum, locale)}</p>
+            <p className="tnum text-lg font-bold text-text">{formatMoney(board.processedSum, locale)}</p>
           </div>
         </div>
       </section>
@@ -303,38 +311,47 @@ function OrderRow({
   active,
   onClick,
   locale,
-  paidLabel,
-  unpaidLabel,
-  driverTag,
+  dict,
+  showTag,
 }: {
   order: DriverOrder;
   active: boolean;
   onClick: () => void;
   locale: "ar" | "de";
-  paidLabel: string;
-  unpaidLabel: string;
-  driverTag?: boolean;
+  dict: ReturnType<typeof useI18n>["dict"];
+  showTag?: boolean;
 }) {
+  let tag: { text: string; cls: string } | null = null;
+  if (showTag) {
+    if (order.cancelled) tag = { text: dict.drivers.cancelled, cls: "bg-danger-weak text-danger" };
+    else if (order.driverNumber) tag = { text: `X-${order.driverNumber}`, cls: "bg-accent text-accent-fg" };
+    else if (order.paidOnline) tag = { text: dict.drivers.paidOnline, cls: "bg-success-weak text-success" };
+  }
+
   return (
     <button
       onClick={onClick}
-      className={`press mb-1.5 flex w-full items-center gap-3 rounded-[var(--radius-btn)] border p-3 text-start transition-colors ${
-        active ? "border-accent bg-accent-weak" : "border-border bg-surface-raised hover:border-border-strong"
-      }`}
+      className={`press mb-1.5 flex w-full items-center gap-2.5 rounded-[var(--radius-btn)] border p-3 text-start transition-colors ${
+        active
+          ? "border-accent bg-accent-weak"
+          : "border-border bg-surface-raised hover:border-border-strong"
+      } ${order.cancelled ? "opacity-60" : ""}`}
     >
-      {driverTag && order.driverNumber ? (
-        <span className="tnum flex shrink-0 items-center justify-center rounded-md bg-accent px-2 py-1 text-xs font-bold text-accent-fg">
-          X-{order.driverNumber}
+      {tag ? (
+        <span className={`tnum shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-xs font-bold ${tag.cls}`}>
+          {tag.text}
         </span>
       ) : null}
-      <span className="tnum shrink-0 text-sm font-bold text-text">{order.orderNumber}</span>
-      <span className="min-w-0 flex-1 truncate text-xs text-text-muted">
-        {order.customerName ?? ""}
+      <span className={`tnum shrink-0 text-sm font-bold text-text ${order.cancelled ? "line-through" : ""}`}>
+        {order.orderNumber}
       </span>
-      <span
-        className={`size-2 shrink-0 rounded-full ${order.paid ? "bg-success" : "bg-warning"}`}
-        title={order.paid ? paidLabel : unpaidLabel}
-      />
+      <span className="min-w-0 flex-1 truncate text-xs text-text-muted">{order.customerName ?? ""}</span>
+      {!showTag ? (
+        <span
+          className={`size-2 shrink-0 rounded-full ${order.paid ? "bg-success" : "bg-warning"}`}
+          title={order.paid ? dict.drivers.paid : dict.drivers.unpaid}
+        />
+      ) : null}
       <span className="tnum shrink-0 text-sm font-bold text-text">{formatMoney(order.total, locale)}</span>
     </button>
   );

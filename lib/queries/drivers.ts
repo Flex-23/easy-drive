@@ -18,6 +18,8 @@ export interface DriverOrder {
   driverNumber: number | null;
   status: OrderStatus;
   paid: boolean;
+  paidOnline: boolean;
+  cancelled: boolean;
   createdAt: string;
   customerName: string | null;
   customerPhone: string | null;
@@ -26,19 +28,23 @@ export interface DriverOrder {
 }
 
 export interface DriverBoard {
-  unassigned: DriverOrder[];
-  assigned: DriverOrder[];
-  unassignedCount: number;
-  assignedCount: number;
-  assignedSum: number;
+  /** Section 1: active delivery orders still waiting to be handled. */
+  pending: DriverOrder[];
+  /** Section 2: orders with a driver, paid online, or cancelled. */
+  processed: DriverOrder[];
+  pendingCount: number;
+  pendingSum: number;
+  processedCount: number;
+  /** Total of processed orders excluding cancelled ones. */
+  processedSum: number;
 }
 
-/** Delivery orders that still need handling on the dispatch board. */
+/** The orders board (delivery orders in their operational lifecycle). */
 export async function getDriverBoard(): Promise<DriverBoard> {
   const orders = await db.order.findMany({
     where: {
       type: "DELIVERY",
-      status: { in: ["PENDING", "PREPARING", "READY"] },
+      status: { in: ["PENDING", "PREPARING", "READY", "CANCELLED"] },
     },
     orderBy: { createdAt: "asc" },
     include: {
@@ -60,6 +66,8 @@ export async function getDriverBoard(): Promise<DriverBoard> {
     driverNumber: o.driverNumber,
     status: o.status,
     paid: o.paidAt !== null,
+    paidOnline: o.paymentMethod === "ONLINE",
+    cancelled: o.status === "CANCELLED",
     createdAt: o.createdAt.toISOString(),
     customerName: o.customer?.name ?? null,
     customerPhone: o.customer?.phone ?? null,
@@ -85,14 +93,24 @@ export async function getDriverBoard(): Promise<DriverBoard> {
   });
 
   const all = orders.map(map);
-  const unassigned = all.filter((o) => o.driverNumber === null);
-  const assigned = all.filter((o) => o.driverNumber !== null);
+
+  // Pending: unassigned, active, and not paid online.
+  const pending = all.filter(
+    (o) => !o.cancelled && o.driverNumber === null && !o.paidOnline,
+  );
+  // Processed: has a driver, or paid online, or cancelled.
+  const processed = all.filter(
+    (o) => o.driverNumber !== null || o.paidOnline || o.cancelled,
+  );
 
   return {
-    unassigned,
-    assigned,
-    unassignedCount: unassigned.length,
-    assignedCount: assigned.length,
-    assignedSum: assigned.reduce((acc, o) => acc + o.total, 0),
+    pending,
+    processed,
+    pendingCount: pending.length,
+    pendingSum: pending.reduce((acc, o) => acc + o.total, 0),
+    processedCount: processed.length,
+    processedSum: processed
+      .filter((o) => !o.cancelled)
+      .reduce((acc, o) => acc + o.total, 0),
   };
 }

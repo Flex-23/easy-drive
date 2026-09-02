@@ -57,7 +57,10 @@ export async function unassignDriver(
   }
 }
 
-/** Flag the order as paid online (e.g. via the driver terminal). */
+/**
+ * Flag the order as paid online. This takes it off the driver (the customer
+ * paid inside the system) and moves it to the paid-online group.
+ */
 export async function markPaidOnline(
   orderId: number,
   localeRaw: string,
@@ -66,7 +69,12 @@ export async function markPaidOnline(
   try {
     await db.order.update({
       where: { id: orderId },
-      data: { paymentMethod: "ONLINE", paidAt: new Date() },
+      data: {
+        paymentMethod: "ONLINE",
+        paidAt: new Date(),
+        driverNumber: null,
+        status: "PREPARING",
+      },
     });
     revalidate(locale);
     return { ok: true, data: { id: orderId } };
