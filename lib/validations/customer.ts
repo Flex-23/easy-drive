@@ -20,11 +20,10 @@ export const customerSchema = z.object({
     .object({
       street: z.string().trim().min(1, "required").max(120),
       houseNumber: z.string().trim().min(1, "required").max(20),
-      postalCode: z
-        .string()
-        .trim()
-        .regex(/^[0-9]{5}$/, "required"),
+      mahalla: z.string().trim().max(80).optional().nullable(),
+      area: z.string().trim().max(80).optional().nullable(),
       city: z.string().trim().min(1, "required").max(80),
+      postalCode: z.string().trim().max(12).optional().nullable(),
       notes: z.string().trim().max(200).optional().nullable(),
     })
     .optional()

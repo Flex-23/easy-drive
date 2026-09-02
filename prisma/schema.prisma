@@ -203,7 +203,9 @@ model CustomerAddress {
   customerId  Int
   street      String
   houseNumber String
-  postalCode  String
+  mahalla     String?
+  area        String?
+  postalCode  String?
   city        String
   notes       String? @db.Text
   isDefault   Boolean @default(false)

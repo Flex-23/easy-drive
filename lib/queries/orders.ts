@@ -60,7 +60,16 @@ async function toOrderCards(where: object): Promise<OrderCard[]> {
     customerName: o.customer?.name ?? null,
     customerPhone: o.customer?.phone ?? null,
     address: o.address
-      ? `${o.address.street} ${o.address.houseNumber}, ${o.address.postalCode} ${o.address.city}`
+      ? [
+          `${o.address.street} ${o.address.houseNumber}`,
+          o.address.mahalla,
+          o.address.area,
+          o.address.postalCode
+            ? `${o.address.postalCode} ${o.address.city}`
+            : o.address.city,
+        ]
+          .filter(Boolean)
+          .join("، ")
       : null,
     tableNumber: o.tableNumber,
     lines: o.lines.map((l) => ({

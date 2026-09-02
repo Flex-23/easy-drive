@@ -98,7 +98,16 @@
     "searchHint": "اكتب رقم الهاتف للبحث",
     "noResults": "لا يوجد عملاء",
     "save": "حفظ العميل",
-    "select": "اختيار"
+    "select": "اختيار",
+    "selectCustomer": "اختر العميل",
+    "attach": "اختر",
+    "register": "تسجيل عميل جديد",
+    "mahalla": "المحلة",
+    "area": "المنطقة",
+    "selectStreet": "اختر الشارع",
+    "details": "تفاصيل العميل",
+    "searchPhone": "ابحث برقم الهاتف",
+    "notFoundHint": "لا يوجد عميل بهذا الرقم — سجّل عميلاً جديداً"
   },
   "keypad": {
     "enter": "إدخال",

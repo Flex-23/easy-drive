@@ -98,7 +98,16 @@
     "searchHint": "Telefonnummer zum Suchen eingeben",
     "noResults": "Keine Kunden gefunden",
     "save": "Kunde speichern",
-    "select": "Auswählen"
+    "select": "Auswählen",
+    "selectCustomer": "Kunde wählen",
+    "attach": "Auswählen",
+    "register": "Neukunde anlegen",
+    "mahalla": "Mahalla",
+    "area": "Gebiet",
+    "selectStreet": "Straße wählen",
+    "details": "Kundendaten",
+    "searchPhone": "Nach Telefonnummer suchen",
+    "notFoundHint": "Kein Kunde mit dieser Nummer — neuen Kunden anlegen"
   },
   "keypad": {
     "enter": "Eingabe",

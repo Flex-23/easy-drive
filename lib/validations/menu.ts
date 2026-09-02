@@ -18,7 +18,9 @@ export const onlineOrderSchema = z.object({
     .object({
       street: z.string().trim().min(1, "required"),
       houseNumber: z.string().trim().min(1, "required"),
-      postalCode: z.string().trim().min(1, "required"),
+      mahalla: z.string().trim().optional().nullable(),
+      area: z.string().trim().optional().nullable(),
+      postalCode: z.string().trim().optional().nullable(),
       city: z.string().trim().min(1, "required"),
     })
     .optional()

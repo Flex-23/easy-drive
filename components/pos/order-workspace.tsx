@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { UserRound, UserPlus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { computeOrderTotals } from "@/lib/pricing";
 import { useToast } from "@/components/ui/toast";
 import { OrderTypeTabs, type OrderType } from "./order-type-tabs";
 import { CartColumn } from "./cart-column";
-import { CustomerPanel } from "./customer-panel";
 import { MenuBrowser } from "./menu-browser";
 import { ProductModal } from "./product-modal";
 import { PaymentModal } from "./payment-modal";
 import { DiscountModal } from "./discount-modal";
 import { SplitModal } from "./split-modal";
-import { CustomerFormModal } from "./customer-form-modal";
+import { CustomerSelectModal } from "./customer-select-modal";
 import { ReceiptModal } from "./receipt-modal";
 import { holdOrder, payOrder } from "@/app/actions/orders";
 import type { CategoryView, MenuItemView } from "@/types/menu";
@@ -42,8 +42,7 @@ export function OrderWorkspace({
   const [showPayment, setShowPayment] = useState(false);
   const [showDiscount, setShowDiscount] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
-  const [prefillPhone, setPrefillPhone] = useState("");
+  const [showCustomer, setShowCustomer] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
   const deliveryCents = orderType === "DELIVERY" ? Math.round(deliveryFee * 100) : 0;
@@ -104,6 +103,7 @@ export function OrderWorkspace({
   function validateBeforeCheckout(): boolean {
     if (orderType === "DELIVERY" && !customer?.address) {
       toast(dict.validation.addressRequired, "error");
+      setShowCustomer(true);
       return false;
     }
     if (orderType === "DINE_IN" && !tableNumber.trim()) {
@@ -154,13 +154,16 @@ export function OrderWorkspace({
     });
   }
 
+  const needsAddress = orderType === "DELIVERY" && !customer?.address;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Order-type tabs + contextual control */}
-      <div className="flex items-center gap-3 border-b border-border px-3 py-2.5">
+      {/* Header: order-type tabs + table selector + customer control */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2.5">
         <div className="w-full max-w-md">
           <OrderTypeTabs value={orderType} onChange={setOrderType} />
         </div>
+
         {orderType === "DINE_IN" ? (
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-text-muted">
@@ -175,10 +178,44 @@ export function OrderWorkspace({
             />
           </div>
         ) : null}
+
+        <div className="ms-auto flex items-center gap-2">
+          {customer ? (
+            <div
+              className={`flex items-center gap-2 rounded-[var(--radius-btn)] border bg-surface px-3 py-1.5 ${needsAddress ? "border-danger" : "border-border"}`}
+            >
+              <UserRound className="size-4 text-accent" />
+              <span className="max-w-40 truncate text-sm font-semibold text-text">
+                {customer.name}
+              </span>
+              <button
+                onClick={() => setShowCustomer(true)}
+                className="press text-xs font-semibold text-accent hover:underline"
+              >
+                {dict.customer.change}
+              </button>
+              <button
+                onClick={() => setCustomer(null)}
+                className="press rounded-md p-0.5 text-text-faint hover:text-danger"
+                aria-label={dict.customer.clear}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCustomer(true)}
+              className={`press flex items-center gap-2 rounded-[var(--radius-btn)] border px-3 py-1.5 text-sm font-semibold hover:bg-surface-muted ${needsAddress ? "border-danger text-danger" : "border-border text-text"}`}
+            >
+              <UserPlus className="size-4" />
+              {dict.customer.selectCustomer}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* 4-column working area (cart | customer | menu[sidebar+grid]) */}
-      <div className="grid min-h-0 flex-1 grid-cols-[26fr_24fr_50fr] gap-3 p-3">
+      {/* Working area: cart + menu only */}
+      <div className="grid min-h-0 flex-1 grid-cols-[30fr_70fr] gap-3 p-3">
         <CartColumn
           lines={lines}
           totals={totals}
@@ -190,16 +227,6 @@ export function OrderWorkspace({
           onSplit={() => setShowSplit(true)}
           onHold={hold}
           onCharge={charge}
-        />
-        <CustomerPanel
-          orderType={orderType}
-          customer={customer}
-          onSelect={setCustomer}
-          onClear={() => setCustomer(null)}
-          onAddCustomer={(phone) => {
-            setPrefillPhone(phone);
-            setShowCustomerForm(true);
-          }}
         />
         <MenuBrowser categories={categories} onSelectItem={setActiveItem} />
       </div>
@@ -223,15 +250,16 @@ export function OrderWorkspace({
         }}
       />
       <SplitModal open={showSplit} total={totals.total} onClose={() => setShowSplit(false)} />
-      <CustomerFormModal
-        open={showCustomerForm}
-        prefillPhone={prefillPhone}
-        onClose={() => setShowCustomerForm(false)}
-        onSaved={(c) => {
-          setCustomer(c);
-          setShowCustomerForm(false);
-        }}
-      />
+      {showCustomer ? (
+        <CustomerSelectModal
+          open
+          onClose={() => setShowCustomer(false)}
+          onAttach={(c) => {
+            setCustomer(c);
+            setShowCustomer(false);
+          }}
+        />
+      ) : null}
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
     </div>
   );
