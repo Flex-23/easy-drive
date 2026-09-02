@@ -18,7 +18,7 @@ const emptyForm = {
   phone: "",
   street: "",
   houseNumber: "",
-  mahalla: "",
+  postalCode: "",
   area: "",
   city: "",
 };
@@ -75,8 +75,10 @@ export function CustomerSelectModal({
   const msg = (key: string) => dict.validation[key as ValidationKey] ?? dict.validation.required;
 
   const streetMatches = useMemo(() => {
-    const q = streetQuery.trim();
-    const list = q ? streets.filter((s) => s.street.includes(q)) : streets;
+    const q = streetQuery.trim().toLowerCase();
+    const list = q
+      ? streets.filter((s) => s.street.toLowerCase().includes(q))
+      : streets;
     return list.slice(0, 8);
   }, [streetQuery, streets]);
 
@@ -88,7 +90,7 @@ export function CustomerSelectModal({
       phone: c.phone,
       street: c.address?.street ?? "",
       houseNumber: c.address?.houseNumber ?? "",
-      mahalla: c.address?.mahalla ?? "",
+      postalCode: c.address?.postalCode ?? "",
       area: c.address?.area ?? "",
       city: c.address?.city ?? "",
     });
@@ -101,15 +103,15 @@ export function CustomerSelectModal({
     setForm((f) => ({
       ...f,
       street: entry.street,
-      mahalla: entry.mahalla,
-      area: entry.area,
+      postalCode: entry.postalCode,
       city: entry.city,
+      area: entry.area,
     }));
   }
 
   function attach() {
     const hasAddress =
-      form.street || form.houseNumber || form.mahalla || form.area || form.city;
+      form.street || form.houseNumber || form.postalCode || form.area || form.city;
     const payload = {
       id: existingId ?? undefined,
       name: form.name,
@@ -118,7 +120,7 @@ export function CustomerSelectModal({
         ? {
             street: form.street,
             houseNumber: form.houseNumber,
-            mahalla: form.mahalla || undefined,
+            postalCode: form.postalCode || undefined,
             area: form.area || undefined,
             city: form.city,
           }
@@ -261,16 +263,16 @@ export function CustomerSelectModal({
             <p className="mt-1 text-xs text-danger">{msg(errors["address.street"])}</p>
           ) : null}
           {streetOpen && streetMatches.length > 0 ? (
-            <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-[var(--radius-btn)] border border-border bg-surface-raised shadow-[var(--shadow-lg)]">
+            <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-[var(--radius-btn)] border border-border bg-surface-raised shadow-[var(--shadow-lg)]">
               {streetMatches.map((s) => (
                 <button
                   key={s.street}
                   onClick={() => pickStreet(s)}
                   className="press flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 text-start last:border-0 hover:bg-surface-muted"
                 >
-                  <span className="text-sm font-medium text-text">{s.street}</span>
-                  <span className="text-xs text-text-faint">
-                    {[s.mahalla && `${dict.customer.mahalla} ${s.mahalla}`, s.area].filter(Boolean).join(" · ")}
+                  <span className="truncate text-sm font-medium text-text">{s.street}</span>
+                  <span className="tnum shrink-0 text-xs text-text-faint">
+                    {[s.postalCode, s.area || s.city].filter(Boolean).join(" · ")}
                   </span>
                 </button>
               ))}
@@ -281,8 +283,8 @@ export function CustomerSelectModal({
         {renderField("address.houseNumber", dict.customer.houseNumber, form.houseNumber, (v) =>
           setForm((f) => ({ ...f, houseNumber: v })),
         )}
-        {renderField("address.mahalla", dict.customer.mahalla, form.mahalla, (v) =>
-          setForm((f) => ({ ...f, mahalla: v })),
+        {renderField("address.postalCode", dict.customer.postalCode, form.postalCode, (v) =>
+          setForm((f) => ({ ...f, postalCode: v })),
         )}
         {renderField("address.area", dict.customer.area, form.area, (v) =>
           setForm((f) => ({ ...f, area: v })),
