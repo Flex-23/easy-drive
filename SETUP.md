@@ -247,30 +247,31 @@ other road: it renders the ticket where the data is and moves the **finished
 bytes** to where the paper is.
 
 ```
-cloud app  ──renders──▶  PrintJob row  ──claims──▶  print agent  ──▶  spooler ──▶ paper
- (Vercel)                (Supabase)                (shop machine)
+cloud app ──renders──▶ PrintJob ──asks over HTTPS──▶ print agent ──▶ spooler ──▶ paper
+ (Vercel)             (Supabase)                    (shop machine)
 ```
 
 On the shop machine nothing changes — the app still prints directly. On any
-other host `send()` writes the job into `PrintJob` instead, and
-[scripts/print-agent.mjs](scripts/print-agent.mjs) picks it up:
+other host `send()` writes the job into `PrintJob` instead, and the agent in
+[print/](print/) claims it through `POST /api/print-jobs` and prints it.
 
-```bash
-npm run print-agent        # leave it running on the shop machine
-```
+The [print/](print/) folder is meant to be **copied anywhere on the shop's
+machine**: it needs Node.js and nothing else — no `npm install`, no database
+password, no checkout of this project. Fill in `config.json` (the app's address
+and `PRINT_AGENT_KEY`) and double-click `start-print.bat`. See
+[print/README.md](print/README.md).
 
-It logs every job it prints. What it does **not** contain is any knowledge of
-menus, prices or receipts — the bytes arrive complete, so the agent needs only a
-printer and never has to change when the app does.
+What the agent does not contain is the point of it: no menu, no prices, no
+receipt layout. The bytes reach it finished, so it needs only a printer, and it
+does not change when the app does.
 
 The queue is honest about failure: a job is claimed with a conditional update
 (two agents can never print the same ticket twice), retried up to five times,
-and left as `FAILED` with the printer's own error when the paper really is out.
-Jobs interrupted by a crash or a power cut are re-queued when the agent starts.
-Finished jobs are deleted after a day.
+and left `FAILED` carrying the printer's own error when the paper really is out.
+Printed jobs are swept a day later.
 
-To start it with Windows: press <kbd>Win</kbd>+<kbd>R</kbd>, run `shell:startup`,
-and put a shortcut there to `cmd /c cd /d <project> && npm run print-agent`.
+`PRINT_AGENT_KEY` must be set on the app — while it is empty `/api/print-jobs`
+answers 503 and nothing can drain the queue.
 ## The look
 
 Everything visual comes from the tokens at the top of

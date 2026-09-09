@@ -45,6 +45,11 @@ const envSchema = z.object({
    * every POST must carry it. Set it before the port is reachable from outside.
    */
   ORDER_API_KEY: optional(z.string().min(16)),
+  /**
+   * Shared key for the print agent that runs beside the shop's printer. While
+   * it is unset `/api/print-jobs` stays closed and nothing can drain the queue.
+   */
+  PRINT_AGENT_KEY: optional(z.string().min(16)),
 });
 
 const parsed = envSchema.safeParse(process.env);

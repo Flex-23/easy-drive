@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# the print agent's own address + key (see print/config.example.json)
+/print/config.json
+
 # Local agent tooling: vendored third-party skills (mixed/unstated licences)
 # and machine-specific permissions. CLAUDE.md records which skills to install.
 /.claude/
