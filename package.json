@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "prisma db seed",
+    "print-agent": "node --env-file=.env scripts/print-agent.mjs",
     "//postinstall": "Hosts like Vercel cache node_modules, so Prisma's own postinstall never runs on a rebuild and the client is stale or missing. Generating here runs on every install.",
     "postinstall": "prisma generate"
   },

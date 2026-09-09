@@ -306,6 +306,38 @@ model User {
   @@index([isActive])
 }
 
+/// A job waiting for the shop's printer.
+enum PrintJobStatus {
+  QUEUED
+  PRINTING
+  DONE
+  FAILED
+}
+
+/// One piece of paper, already rendered, waiting to be pulled by the agent that
+/// runs beside the printer. The cloud copy of the app has no printer attached,
+/// so it renders the ticket and leaves it here; `scripts/print-agent.mjs` on the
+/// shop machine claims it and hands the bytes to the Windows spooler.
+///
+/// The bytes are stored finished, not the recipe for them: the agent then needs
+/// no menu, no dictionary and no business rules — only a printer.
+model PrintJob {
+  id          Int            @id @default(autoincrement())
+  /// What this paper is, for whoever reads the queue. Never used to build it.
+  label       String
+  /// The ESC/POS job exactly as the printer should receive it.
+  payload     Bytes
+  /// The printer chosen in Settings when the job was made.
+  printerName String
+  status      PrintJobStatus @default(QUEUED)
+  attempts    Int            @default(0)
+  error       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status, createdAt])
+}
+
 model Setting {
   key       String      @id
   value     String      @db.Text

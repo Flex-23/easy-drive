@@ -239,6 +239,38 @@ width rule so you can confirm both at once.
 The QR on the address label is drawn by the printer itself (ESC/POS QR
 command), so it costs a few bytes rather than an image and stays sharp.
 Text is encoded as **CP858**, which carries ä ö ü ß and €.
+
+### Printing from the cloud — the print agent
+
+A server in Frankfurt cannot reach a printer in the shop, so the app takes the
+other road: it renders the ticket where the data is and moves the **finished
+bytes** to where the paper is.
+
+```
+cloud app  ──renders──▶  PrintJob row  ──claims──▶  print agent  ──▶  spooler ──▶ paper
+ (Vercel)                (Supabase)                (shop machine)
+```
+
+On the shop machine nothing changes — the app still prints directly. On any
+other host `send()` writes the job into `PrintJob` instead, and
+[scripts/print-agent.mjs](scripts/print-agent.mjs) picks it up:
+
+```bash
+npm run print-agent        # leave it running on the shop machine
+```
+
+It logs every job it prints. What it does **not** contain is any knowledge of
+menus, prices or receipts — the bytes arrive complete, so the agent needs only a
+printer and never has to change when the app does.
+
+The queue is honest about failure: a job is claimed with a conditional update
+(two agents can never print the same ticket twice), retried up to five times,
+and left as `FAILED` with the printer's own error when the paper really is out.
+Jobs interrupted by a crash or a power cut are re-queued when the agent starts.
+Finished jobs are deleted after a day.
+
+To start it with Windows: press <kbd>Win</kbd>+<kbd>R</kbd>, run `shell:startup`,
+and put a shortcut there to `cmd /c cd /d <project> && npm run print-agent`.
 ## The look
 
 Everything visual comes from the tokens at the top of

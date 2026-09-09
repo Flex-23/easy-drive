@@ -1,5 +1,6 @@
 "use server";
 
+import { db } from "@/lib/db";
 import { getCurrentCashier } from "@/lib/session";
 import { getSettings } from "@/lib/queries/settings";
 import { getOrderForTicket, getDriverBoard } from "@/lib/queries/drivers";
@@ -22,12 +23,17 @@ import type { DriverOrder } from "@/lib/queries/drivers";
 import type { ActionResult } from "@/types/order";
 
 /**
- * Printing happens here, on the machine the printer is plugged into — the
- * browser is never asked to print anything. Each action builds the ticket as
- * ESC/POS bytes and hands them to the Windows spooler as a RAW job.
+ * Printing never involves the browser: each action builds the ticket as ESC/POS
+ * bytes here on the server and gets them to a printer one of two ways.
+ *
+ * On the shop machine the bytes go straight to the Windows spooler as a RAW job.
+ * On a host with no printer — the cloud copy of this app — they are queued in
+ * `PrintJob` instead, and the agent running beside the printer
+ * (`scripts/print-agent.mjs`) pulls them and prints them there. Both paths
+ * produce the same paper, because both send the same finished bytes.
  */
 
-type PrintOutcome = ActionResult<{ printed: true }>;
+type PrintOutcome = ActionResult<{ queued: boolean }>;
 
 async function context(): Promise<TicketContext & { printerName: string }> {
   const settings = await getSettings();
@@ -38,9 +44,25 @@ async function context(): Promise<TicketContext & { printerName: string }> {
   };
 }
 
-async function send(data: Buffer, printerName: string): Promise<PrintOutcome> {
+async function send(
+  data: Buffer,
+  printerName: string,
+  label: string,
+): Promise<PrintOutcome> {
+  // No printer on this machine means this is the cloud copy: hand the finished
+  // job to the queue and let the shop's agent take it from there.
+  if (process.platform !== "win32") {
+    if (!printerName.trim()) return { ok: false, error: "printerNotConfigured" };
+    // Copied into a plain Uint8Array: a Node Buffer can sit on a SharedArrayBuffer,
+    // which is not what the Bytes column accepts.
+    await db.printJob.create({
+      data: { label, payload: new Uint8Array(data), printerName },
+    });
+    return { ok: true, data: { queued: true } };
+  }
+
   const result = await printRaw(printerName, data);
-  return result.ok ? { ok: true, data: { printed: true } } : { ok: false, error: result.error };
+  return result.ok ? { ok: true, data: { queued: false } } : { ok: false, error: result.error };
 }
 
 /** The printers Windows knows about — the Settings screen offers these. */
@@ -53,7 +75,7 @@ export async function systemPrinters(): Promise<string[]> {
 export async function printTest(): Promise<PrintOutcome> {
   if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
   const ctx = await context();
-  return send(testTicket(ctx), ctx.printerName);
+  return send(testTicket(ctx), ctx.printerName, "Testdruck");
 }
 
 export type TicketKind = "receipt" | "kitchen" | "label";
@@ -70,7 +92,9 @@ export async function printOrderTicket(
   const ctx = await context();
   const build =
     kind === "kitchen" ? kitchenTicket : kind === "label" ? addressLabel : customerReceipt;
-  return send(build(order, ctx), ctx.printerName);
+  const name =
+    kind === "kitchen" ? "Küche" : kind === "label" ? "Adresse" : "Kundenbeleg";
+  return send(build(order, ctx), ctx.printerName, `${name} ${order.orderNumber}`);
 }
 
 /**
@@ -83,16 +107,20 @@ export async function printNewOrder(orderId: number): Promise<PrintOutcome> {
   if (!order) return { ok: false, error: "genericError" };
 
   const ctx = await context();
-  const receipt = await send(customerReceipt(order, ctx), ctx.printerName);
+  const receipt = await send(
+    customerReceipt(order, ctx),
+    ctx.printerName,
+    `Kundenbeleg ${order.orderNumber}`,
+  );
   if (!receipt.ok) return receipt;
-  return send(kitchenTicket(order, ctx), ctx.printerName);
+  return send(kitchenTicket(order, ctx), ctx.printerName, `Küche ${order.orderNumber}`);
 }
 
 /** The day-close sheet, printed from the daily report screen. */
 export async function printDailyReport(): Promise<PrintOutcome> {
   if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
   const [report, ctx] = await Promise.all([getDailyReport(), context()]);
-  return send(dailyReportTicket(report, ctx), ctx.printerName);
+  return send(dailyReportTicket(report, ctx), ctx.printerName, "Tagesbericht");
 }
 
 export type BoardScope =
@@ -104,7 +132,11 @@ export type BoardScope =
 export async function printPendingReport(): Promise<PrintOutcome> {
   if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
   const [board, ctx] = await Promise.all([getDriverBoard(), context()]);
-  return send(pendingReportTicket(board.pending, board.pendingSum, ctx), ctx.printerName);
+  return send(
+    pendingReportTicket(board.pending, board.pendingSum, ctx),
+    ctx.printerName,
+    "Wartende Bestellungen",
+  );
 }
 
 /**
@@ -177,5 +209,6 @@ export async function printProcessedReport(scope: BoardScope): Promise<PrintOutc
   return send(
     processedReportTicket(shown, title, ctx, picked.length > 0),
     ctx.printerName,
+    title,
   );
 }
