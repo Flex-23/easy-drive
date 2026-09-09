@@ -32,13 +32,23 @@ DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supab
 DIRECT_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres"
 ```
 
-Supabase offers two ports. **5432** is the session-mode pooler and **6543** the
-transaction-mode one. The transaction pooler exists for serverless callers that
-open a connection per request; this app is one long-running server, and measured
-from the shop machine it was **1480 ms per query through 6543 against 305 ms
-through 5432** — so both URLs use 5432 here. `DIRECT_URL` must stay a session
-connection in any case: migrations need advisory locks, which a transaction
-pooler cannot hold.
+Supabase offers two ports, and **which one `DATABASE_URL` uses depends on where
+the app is running.** Getting this wrong takes the site down, so it is worth the
+paragraph:
+
+| Where | Port | Why |
+| --- | --- | --- |
+| A host that scales (Vercel) | **6543** + `?pgbouncer=true&connection_limit=1` | Every request may land on a fresh instance with its own pool. The transaction pooler multiplexes them; the session pooler runs out. |
+| The shop's own machine | **5432** + `?connection_limit=4` | One long-running server, and from there 5432 measured 80 ms per query against 380 ms through 6543. |
+
+The session pooler allows about **15 clients for the whole project**. Point a
+scaling host at it and it will exhaust them, and then *everything* fails —
+including the till — with `FATAL: (EMAXCONNSESSION) max clients reached in
+session mode`. That is why the local URL carries a `connection_limit` too: one
+dev server must not be able to lock the shop out.
+
+`DIRECT_URL` is always 5432. Migrations need a real session for advisory locks,
+which a transaction pooler cannot hold.
 
 Set `MASTER_SESSION_SECRET` too. Without it the cookie signing key is derived
 from `DATABASE_URL`, so changing database would sign everyone out.
