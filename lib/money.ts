@@ -32,13 +32,6 @@ export function formatCents(cents: number, locale: Locale): string {
   return formatMoney(cents / 100, locale);
 }
 
-/** Signed surcharge label, e.g. `+ 1,50 €` / `− 0,50 €`. */
-export function formatSurcharge(value: MoneyInput, locale: Locale): string {
-  const n = toNumber(value);
-  const sign = n < 0 ? "− " : "+ ";
-  return sign + formatMoney(Math.abs(n), locale);
-}
-
 export function formatNumber(value: number, locale: Locale): string {
   return new Intl.NumberFormat(localeIntlTag[locale]).format(value);
 }

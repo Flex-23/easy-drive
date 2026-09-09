@@ -9,7 +9,8 @@ export const settingsSchema = z.object({
   deliveryFee: z.number().min(0, "negativePrice"),
   receiptHeader: z.string().trim().max(200),
   receiptFooter: z.string().trim().max(200),
-  printerName: z.string().trim().max(80),
+  printerName: z.string().trim().max(120),
+  printerColumns: z.number().int().min(24).max(64),
 });
 
 export type SettingsInput = z.infer<typeof settingsSchema>;

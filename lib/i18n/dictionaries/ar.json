@@ -30,18 +30,27 @@
     "currency": "يورو"
   },
   "nav": {
-    "dashboard": "لوحة التحكم",
     "newOrder": "طلب جديد",
-    "onlineOrders": "طلبات الإنترنت",
     "drivers": "الطلبات",
     "dailyReport": "التقرير اليومي",
-    "settings": "الإعدادات",
-    "switchUser": "تبديل المستخدم"
+    "settings": "الإعدادات"
+  },
+  "login": {
+    "title": "دخول الكاشير",
+    "subtitle": "أدخل رمزك السري للبدء",
+    "pinLabel": "الرمز السري",
+    "enter": "دخول",
+    "logout": "إنهاء الوردية",
+    "errors": {
+      "invalidPin": "رمز سري غير صحيح",
+      "tooManyAttempts": "محاولات كثيرة — انتظر خمس دقائق",
+      "adminNotCashier": "حساب المدير لا يعمل على نقاط البيع — استخدم حساب كاشير",
+      "genericError": "حدث خطأ، حاول مرة أخرى"
+    }
   },
   "drivers": {
     "title": "الطلبات",
     "pending": "طلبات قيد الانتظار",
-    "assigned": "قيد التوصيل",
     "processed": "الطلبات المُعالَجة",
     "cancelled": "ملغى",
     "orderNo": "رقم",
@@ -55,31 +64,42 @@
     "sum": "المجموع",
     "noPending": "لا توجد طلبات قيد الانتظار",
     "noAssigned": "لا توجد طلبات قيد التوصيل",
-    "selectHint": "اختر طلباً لعرض تفاصيله",
     "items": "الأصناف",
     "address": "العنوان",
     "paid": "مدفوع",
     "unpaid": "غير مدفوع",
     "driver": "سائق",
     "refresh": "تحديث",
-    "actions": "إجراءات الطلب"
+    "actions": "إجراءات الطلب",
+    "orderDetails": "تفاصيل الطلب",
+    "customer": "الزبون",
+    "time": "الوقت",
+    "total": "الإجمالي",
+    "print": "طباعة",
+    "printPendingTitle": "تقرير الطلبات قيد الانتظار",
+    "printProcessedTitle": "تقرير الطلبات المعالجة",
+    "printScope": "نطاق الطباعة",
+    "scopeAll": "الكل",
+    "scopeDrivers": "السائقون فقط",
+    "selectForPrint": "تحديد للطباعة",
+    "clearSelection": "إلغاء التحديد",
+    "grandTotal": "المجموع الكلي",
+    "withDrivers": "مع السائقين",
+    "alreadyPaid": "منها مدفوع مسبقاً",
+    "payCash": "دفع نقداً",
+    "payOnline": "دفع أونلاين",
+    "paidCash": "مدفوع نقداً",
+    "pickupHint": "طلب استلام — يُدفع نقداً أو أونلاين",
+    "deliveryHint": "طلب توصيل — أدخل رقم السائق أو سجّل الدفع أونلاين"
   },
   "topbar": {
     "support": "الدعم",
-    "terminal": "الجهاز",
     "version": "الإصدار",
-    "cashier": "الكاشير",
     "languageSwitch": "تغيير اللغة",
     "themeToggle": "تبديل السمة",
     "themeLight": "فاتح",
     "themeDark": "داكن",
-    "themeSystem": "النظام",
-    "dbConnected": "قاعدة البيانات متصلة",
-    "dbReconnecting": "إعادة الاتصال بقاعدة البيانات…",
-    "printerReady": "الطابعة جاهزة",
-    "printerNoPaper": "الطابعة بلا ورق",
-    "networkOnline": "متصل بالإنترنت",
-    "networkOffline": "غير متصل"
+    "themeSystem": "النظام"
   },
   "orderType": {
     "dineIn": "تناول بالمطعم",
@@ -102,9 +122,19 @@
     "discountBtn": "خصم",
     "splitBill": "تقسيم الفاتورة",
     "holdOrder": "تعليق الطلب",
-    "charge": "الدفع",
+    "charge": "إرسال الطلب",
     "items": "أصناف",
     "taxIncluded": "شامل ضريبة القيمة المضافة"
+  },
+  "held": {
+    "title": "فواتير معلّقة",
+    "subtitle": "اختر فاتورة لاستئنافها بموادها",
+    "empty": "لا توجد فواتير معلّقة",
+    "resume": "استئناف",
+    "delete": "حذف الفاتورة",
+    "deleteConfirm": "حذف هذه الفاتورة المعلّقة نهائياً؟",
+    "deleted": "تم حذف الفاتورة المعلّقة",
+    "missingItems": "استُئنفت الفاتورة — بعض المواد لم تعد في القائمة"
   },
   "customer": {
     "title": "العميل",
@@ -146,7 +176,8 @@
     "listView": "عرض قائمة",
     "itemNumber": "رقم الصنف",
     "noProducts": "لا توجد أصناف مطابقة",
-    "addedToCart": "أُضيف إلى الطلب"
+    "addedToCart": "أُضيف إلى الطلب",
+    "priceFrom": "من"
   },
   "modal": {
     "selectionRequired": "(الاختيار مطلوب)",
@@ -158,55 +189,25 @@
     "chooseMany": "اختر ما تريد"
   },
   "payment": {
-    "title": "الدفع",
     "cash": "نقدًا",
-    "card": "بطاقة",
     "online": "عبر الإنترنت",
-    "cashTendered": "المبلغ المستلم",
-    "change": "الباقي",
-    "amountDue": "المبلغ المستحق",
-    "complete": "إتمام الدفع",
-    "method": "طريقة الدفع",
-    "insufficientCash": "المبلغ المستلم أقل من المستحق",
-    "quickAmounts": "مبالغ سريعة"
+    "method": "طريقة الدفع"
   },
   "receipt": {
-    "title": "إيصال",
-    "thankYou": "شكرًا لزيارتكم",
-    "order": "طلب",
-    "date": "التاريخ",
     "cashier": "الكاشير",
-    "item": "الصنف",
-    "qty": "الكمية",
-    "price": "السعر",
-    "table": "طاولة",
-    "printReceipt": "طباعة الإيصال"
+    "item": "الصنف"
   },
-  "dashboard": {
-    "title": "لوحة التحكم",
-    "revenueToday": "إيرادات اليوم",
-    "orderCount": "عدد الطلبات",
-    "avgTicket": "متوسط الطلب",
-    "activeDeliveries": "توصيلات نشطة",
-    "revenueByHour": "الإيرادات حسب الساعة",
-    "recentOrders": "أحدث الطلبات",
-    "noOrders": "لا توجد طلبات بعد",
-    "viewAll": "عرض الكل"
-  },
-  "onlineOrders": {
-    "title": "طلبات الإنترنت",
-    "empty": "لا توجد طلبات إنترنت واردة",
-    "accept": "قبول",
-    "reject": "رفض",
-    "printLabel": "طباعة",
-    "newBadge": "جديد",
-    "timeLeft": "الوقت المتبقي",
-    "source": "الإنترنت",
-    "pendingCount": "قيد الانتظار"
+  "tickets": {
+    "receipt": "إيصال الزبون",
+    "receiptTitle": "إيصال",
+    "kitchen": "للمطبخ",
+    "kitchenTitle": "طلب المطبخ",
+    "label": "عنوان + QR",
+    "labelTitle": "بطاقة العنوان",
+    "unofficial": "وصل غير معتمد"
   },
   "dailyReport": {
     "title": "التقرير اليومي",
-    "selectDate": "اختر التاريخ",
     "orders": "الطلبات",
     "paymentBreakdown": "توزيع طرق الدفع",
     "closingSummary": "ملخص الإغلاق",
@@ -218,7 +219,132 @@
     "type": "النوع",
     "status": "الحالة",
     "amount": "المبلغ",
-    "averageTicket": "متوسط الطلب"
+    "averageTicket": "متوسط الطلب",
+    "revenueToday": "إيرادات اليوم",
+    "orderCount": "عدد الطلبات",
+    "activeDeliveries": "توصيلات نشطة",
+    "revenueByHour": "الإيرادات حسب الساعة",
+    "print": "طباعة التقرير",
+    "printTitle": "تقرير مبيعات اليوم",
+    "deliveryBreakdown": "تفصيل التوصيل",
+    "deliveryOrders": "طلبات التوصيل",
+    "driver": "السائق",
+    "driverOrders": "عدد الطلبات",
+    "paidOnlineOrders": "الطلبات المدفوعة أونلاين",
+    "cancelledOrders": "الطلبات الملغاة",
+    "grandTotal": "المجموع الكلي",
+    "noDeliveries": "لا توجد طلبات توصيل اليوم",
+    "printedAt": "وقت الطباعة",
+    "byType": "حسب نوع الطلب"
+  },
+  "master": {
+    "title": "الماستر",
+    "subtitle": "إدارة المطعم",
+    "tabs": {
+      "menu": "القائمة",
+      "staff": "المستخدمون",
+      "sales": "المبيعات"
+    },
+    "menu": {
+      "title": "الأصناف والأطباق",
+      "categories": "الأصناف",
+      "items": "الأطباق",
+      "addCategory": "إضافة صنف",
+      "editCategory": "تعديل الصنف",
+      "addItem": "إضافة طبق",
+      "editItem": "تعديل الطبق",
+      "slug": "المعرّف (إنجليزي)",
+      "icon": "الأيقونة",
+      "active": "مفعّل",
+      "inactive": "معطّل",
+      "popular": "مميّز",
+      "itemNumber": "رقم الطبق",
+      "price": "السعر",
+      "category": "الصنف",
+      "options": "مجموعات الخيارات",
+      "allCategories": "كل الأصناف",
+      "searchHint": "ابحث بالاسم أو الرقم…",
+      "noItems": "لا توجد أطباق مطابقة",
+      "noCategories": "لا توجد أصناف بعد",
+      "itemsCount": "طبق",
+      "deleteCategoryConfirm": "حذف هذا الصنف نهائياً؟",
+      "deleteItemConfirm": "حذف هذا الطبق نهائياً؟",
+      "activate": "تفعيل",
+      "deactivate": "تعطيل",
+      "saved": "تم حفظ القائمة",
+      "deleted": "تم الحذف",
+      "usedInOrders": "مستخدم في طلبات",
+      "sizes": "الأحجام",
+      "addSize": "إضافة حجم",
+      "sizeName": "الحجم",
+      "sizeExample": "مثال: ٣٠×٢٠ سم",
+      "sizePrice": "السعر",
+      "removeSize": "حذف الحجم",
+      "sizesHint": "اتركها فارغة إذا كان للطبق سعر واحد، أو أضف حجماً لكل سعر.",
+      "sizesDefaultHint": "الحجم الأول هو الافتراضي، وسعره هو السعر المعروض على شاشة الكاشير.",
+      "priceFromSizes": "يُحسب من الأحجام",
+      "name": "الاسم",
+      "description": "الوصف"
+    },
+    "staff": {
+      "title": "المستخدمون",
+      "add": "إضافة مستخدم",
+      "edit": "تعديل المستخدم",
+      "name": "الاسم",
+      "role": "الصلاحية",
+      "pin": "الرمز السري",
+      "pinHint": "أربعة أرقام",
+      "pinKeep": "اتركه فارغاً للإبقاء على الرمز الحالي",
+      "color": "اللون",
+      "active": "مفعّل",
+      "orders": "الطلبات",
+      "created": "تاريخ الإضافة",
+      "deleteConfirm": "حذف هذا المستخدم نهائياً؟",
+      "noStaff": "لا يوجد مستخدمون",
+      "saved": "تم حفظ المستخدم",
+      "deleted": "تم حذف المستخدم"
+    },
+    "sales": {
+      "title": "المبيعات",
+      "revenue": "الإيرادات",
+      "orders": "الطلبات",
+      "avgTicket": "متوسط الطلب",
+      "cancelled": "الملغاة",
+      "byDay": "الإيرادات حسب اليوم",
+      "byType": "حسب نوع الطلب",
+      "byMethod": "حسب طريقة الدفع",
+      "topItems": "الأطباق الأكثر مبيعاً",
+      "byCashier": "حسب الكاشير",
+      "byDriver": "حسب السائق",
+      "quantity": "الكمية",
+      "amount": "المبلغ",
+      "count": "العدد",
+      "item": "الطبق",
+      "noData": "لا توجد بيانات في هذه الفترة",
+      "range": "الفترة",
+      "day": "يوم",
+      "month": "شهر",
+      "byHour": "الإيرادات حسب الساعة"
+    },
+    "errors": {
+      "slugExists": "المعرّف مستخدم بالفعل",
+      "itemNumberExists": "رقم الطبق مستخدم بالفعل",
+      "categoryNotEmpty": "لا يمكن حذف صنف يحتوي على أطباق",
+      "itemInUse": "الطبق مستخدم في طلبات سابقة — عطّله بدل حذفه",
+      "lastAdmin": "يجب أن يبقى مدير واحد مفعّل على الأقل",
+      "staffInUse": "المستخدم لديه طلبات مسجّلة — عطّله بدل حذفه",
+      "invalidPin": "رمز سري غير صحيح",
+      "tooManyAttempts": "محاولات كثيرة — انتظر خمس دقائق",
+      "unauthorized": "انتهت الجلسة — سجّل الدخول مجدداً"
+    },
+    "signedInAs": "المستخدم:",
+    "logout": "خروج",
+    "login": {
+      "title": "دخول الماستر",
+      "subtitle": "أدخل الرمز السري للمدير",
+      "pinLabel": "الرمز السري",
+      "enter": "دخول"
+    }
   },
   "settings": {
     "title": "الإعدادات",
@@ -236,16 +362,15 @@
     "printerName": "اسم الطابعة",
     "saved": "تم حفظ الإعدادات",
     "arabic": "العربية",
-    "german": "الألمانية"
-  },
-  "switchUser": {
-    "title": "تبديل المستخدم",
-    "enterPin": "أدخل الرمز السري",
-    "wrongPin": "رمز غير صحيح",
-    "tooManyAttempts": "محاولات كثيرة، حاول لاحقًا",
-    "selectUser": "اختر المستخدم",
-    "welcome": "مرحبًا",
-    "signIn": "تسجيل الدخول"
+    "german": "الألمانية",
+    "printer": "الطابعة",
+    "printerColumns": "عرض الورق",
+    "printTest": "طباعة تجريبية",
+    "printTestDone": "أُرسلت الطباعة التجريبية",
+    "noPrinters": "لم يُعثر على طابعات مثبتة",
+    "refreshPrinters": "تحديث قائمة الطابعات",
+    "columns48": "٨٠ ملم (٤٨ حرفاً)",
+    "columns32": "٥٨ ملم (٣٢ حرفاً)"
   },
   "status": {
     "DRAFT": "مسودة",
@@ -261,18 +386,15 @@
     "CASHIER": "كاشير"
   },
   "toast": {
-    "orderCreated": "تم إنشاء الطلب",
     "orderHeld": "تم تعليق الطلب",
     "orderResumed": "تم استئناف الطلب",
-    "orderPaid": "تم الدفع بنجاح",
     "orderCancelled": "تم إلغاء الطلب",
     "customerSaved": "تم حفظ العميل",
-    "settingsSaved": "تم حفظ الإعدادات",
-    "onlineOrderAccepted": "تم قبول الطلب",
-    "onlineOrderRejected": "تم رفض الطلب",
     "driverAssigned": "تم إسناد الطلب للسائق",
     "paidOnlineMarked": "تم وضع علامة مدفوع أونلاين",
-    "genericError": "حدث خطأ، حاول مرة أخرى"
+    "genericError": "حدث خطأ، حاول مرة أخرى",
+    "orderSent": "أُرسل الطلب إلى صفحة الطلبات",
+    "paidCashMarked": "تم تسجيل الدفع نقداً"
   },
   "validation": {
     "required": "هذا الحقل مطلوب",
@@ -288,12 +410,18 @@
     "cashInsufficient": "المبلغ المستلم غير كافٍ",
     "emptyOrder": "الطلب فارغ",
     "phoneExists": "رقم الهاتف مستخدم بالفعل",
-    "taxRateRange": "نسبة الضريبة يجب أن تكون بين ٠ و ١٠٠"
+    "taxRateRange": "نسبة الضريبة يجب أن تكون بين ٠ و ١٠٠",
+    "invalidSlug": "أحرف إنجليزية صغيرة وأرقام وشرطات فقط",
+    "invalidColor": "لون غير صالح (‎#RRGGBB)",
+    "duplicateSize": "اسم الحجم مكرر"
   },
   "errors": {
     "notFound": "الصفحة غير موجودة",
     "somethingWrong": "حدث خطأ ما",
     "tryAgain": "حاول مرة أخرى",
-    "backHome": "العودة للرئيسية"
+    "backHome": "العودة للرئيسية",
+    "printerNotConfigured": "لم تُختَر طابعة — اخترها من الإعدادات",
+    "printerFailed": "تعذّر الإرسال إلى الطابعة",
+    "printerUnsupportedPlatform": "الطباعة المباشرة مدعومة على ويندوز فقط"
   }
 }

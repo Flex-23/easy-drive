@@ -150,7 +150,7 @@ export function CartColumn({
         <button
           onClick={onCharge}
           disabled={empty || busy}
-          className="press flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-accent py-3.5 text-base font-bold text-accent-fg hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+          className="press flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-accent py-3.5 text-base font-bold tracking-tight text-accent-fg shadow-[var(--shadow-md)] hover:bg-accent-strong hover:shadow-[var(--shadow-lg)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
         >
           <CreditCard className="size-5" />
           <span>{dict.cart.charge}</span>
@@ -185,7 +185,7 @@ function SmallBtn({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="press flex flex-col items-center gap-1 rounded-[var(--radius-btn)] border border-border bg-surface py-2 text-xs font-semibold text-text-muted hover:border-border-strong hover:text-text disabled:opacity-40"
+      className="press flex flex-col items-center gap-1 rounded-[var(--radius-btn)] border border-border bg-surface py-2 text-xs font-semibold text-text-muted hover:border-accent/40 hover:bg-accent-weak hover:text-accent disabled:opacity-40 disabled:hover:border-border disabled:hover:bg-surface disabled:hover:text-text-muted"
     >
       <Icon className="size-4" />
       <span className="truncate">{label}</span>

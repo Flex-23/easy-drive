@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local agent tooling: vendored third-party skills (mixed/unstated licences)
+# and machine-specific permissions. CLAUDE.md records which skills to install.
+/.claude/

@@ -1,13 +1,17 @@
 // Easy Drive — Prisma schema
-// MySQL (local XAMPP). All money is Decimal(10,2). Charset utf8mb4 for Arabic + German.
+// PostgreSQL (Supabase). All money is Decimal(10,2); the database is UTF-8, so
+// Arabic and German store and sort correctly without further configuration.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  // Queries go through the transaction-mode pooler (port 6543); migrations and
+  // introspection need a real session, so they take the direct URL (port 5432).
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Locale {
@@ -18,6 +22,14 @@ enum Locale {
 enum SelectionType {
   SINGLE
   MULTIPLE
+}
+
+/// What an option group means. SIZE is the dish sold in several sizes — one
+/// group per item, each choice a size with its own price. EXTRA is everything
+/// else (dips, drinks, spice level).
+enum OptionGroupKind {
+  SIZE
+  EXTRA
 }
 
 enum OrderType {
@@ -98,7 +110,6 @@ model MenuItem {
   isPopular  Boolean @default(false)
   isActive   Boolean @default(true)
   sortOrder  Int     @default(0)
-  imageUrl   String?
 
   category     Category              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   optionGroups OptionGroup[]
@@ -129,12 +140,13 @@ model MenuItemTranslation {
 }
 
 model OptionGroup {
-  id            Int           @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   menuItemId    Int
+  kind          OptionGroupKind @default(EXTRA)
   selectionType SelectionType
-  isRequired    Boolean       @default(false)
-  isCollapsible Boolean       @default(false)
-  sortOrder     Int           @default(0)
+  isRequired    Boolean         @default(false)
+  isCollapsible Boolean         @default(false)
+  sortOrder     Int             @default(0)
 
   menuItem     MenuItem                 @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   choices      OptionChoice[]

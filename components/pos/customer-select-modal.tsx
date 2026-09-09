@@ -7,7 +7,8 @@ import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { customerSchema } from "@/lib/validations/customer";
 import { searchCustomersAction, upsertCustomer } from "@/app/actions/customers";
-import type { CustomerView } from "@/lib/queries/customers";
+import { listStreets } from "@/app/actions/streets";
+import type { CustomerView, CustomerMatch } from "@/lib/queries/customers";
 import type { StreetEntry } from "@/types/street";
 import type { Dictionary } from "@/lib/i18n/types";
 
@@ -23,14 +24,38 @@ const emptyForm = {
   city: "",
 };
 
+/**
+ * Fetched-once caches that outlive the modal: the street list (identical for
+ * every order) and the lookups already answered this session. Re-opening the
+ * form, or backspacing over a query, then costs nothing.
+ */
+let streetCache: StreetEntry[] | null = null;
+const searchCache = new Map<string, CustomerMatch[]>();
+
+/**
+ * What we can answer without the server: too short a query, a customer already
+ * chosen, a repeated query — or a shorter query that found nobody, since a
+ * longer one cannot match more. `undefined` means the server must be asked.
+ */
+function answerFromCache(
+  query: string,
+  existingId: number | null,
+): CustomerMatch[] | undefined {
+  if (query.length < 2 || existingId !== null) return [];
+  const hit = searchCache.get(query);
+  if (hit) return hit;
+  for (let i = 2; i < query.length; i++) {
+    if (searchCache.get(query.slice(0, i))?.length === 0) return [];
+  }
+  return undefined;
+}
+
 export function CustomerSelectModal({
   open,
-  streets,
   onClose,
   onAttach,
 }: {
   open: boolean;
-  streets: StreetEntry[];
   onClose: () => void;
   onAttach: (c: CustomerView) => void;
 }) {
@@ -40,34 +65,50 @@ export function CustomerSelectModal({
 
   const [form, setForm] = useState({ ...emptyForm });
   const [existingId, setExistingId] = useState<number | null>(null);
-  const [matches, setMatches] = useState<CustomerView[]>([]);
+  const [matches, setMatches] = useState<CustomerMatch[]>([]);
   const [searching, setSearching] = useState(false);
+  const [streets, setStreets] = useState<StreetEntry[]>(streetCache ?? []);
   const [streetQuery, setStreetQuery] = useState("");
   const [streetOpen, setStreetOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const reqId = useRef(0);
 
+  // The street list is fetched once per tab, the first time the form opens.
+  useEffect(() => {
+    if (streetCache) return;
+    let alive = true;
+    listStreets().then((rows) => {
+      streetCache = rows;
+      if (alive) setStreets(rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Debounced phone lookup — only while no existing customer is chosen yet.
   useEffect(() => {
     const query = form.phone.trim();
     const id = ++reqId.current;
+    const known = answerFromCache(query, existingId);
+
     const t = setTimeout(
       async () => {
-        if (query.length < 2 || existingId !== null) {
-          if (id === reqId.current) {
-            setMatches([]);
-            setSearching(false);
-          }
+        if (id !== reqId.current) return;
+        if (known) {
+          setMatches(known);
+          setSearching(false);
           return;
         }
         setSearching(true);
         const res = await searchCustomersAction(query);
+        searchCache.set(query, res);
         if (id === reqId.current) {
           setMatches(res);
           setSearching(false);
         }
       },
-      query.length < 2 ? 0 : 250,
+      known ? 0 : 150,
     );
     return () => clearTimeout(t);
   }, [form.phone, existingId]);
@@ -82,7 +123,7 @@ export function CustomerSelectModal({
     return list.slice(0, 8);
   }, [streetQuery, streets]);
 
-  function fillFromCustomer(c: CustomerView) {
+  function fillFromCustomer(c: CustomerMatch) {
     setExistingId(c.id);
     setMatches([]);
     setForm({
@@ -149,6 +190,9 @@ export function CustomerSelectModal({
     start(async () => {
       const res = await upsertCustomer({ ...parsed.data, locale });
       if (res.ok) {
+        // The directory just changed: cached answers (including "no match" for
+        // a number that now exists) would otherwise hide the new customer.
+        searchCache.clear();
         toast(dict.toast.customerSaved, "success");
         onAttach(res.data);
       } else {

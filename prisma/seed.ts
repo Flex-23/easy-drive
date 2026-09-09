@@ -25,6 +25,8 @@ interface ChoiceSeed {
 interface GroupSeed {
   ar: string;
   de: string;
+  /** SIZE is the dish's size list, priced absolutely; everything else is EXTRA. */
+  kind?: "SIZE" | "EXTRA";
   selectionType: "SINGLE" | "MULTIPLE";
   isRequired?: boolean;
   isCollapsible?: boolean;
@@ -52,6 +54,7 @@ interface CategorySeed {
 const pizzaSizes: GroupSeed = {
   ar: "الحجم",
   de: "Größe",
+  kind: "SIZE",
   selectionType: "SINGLE",
   isRequired: true,
   choices: [
@@ -133,6 +136,7 @@ const gyrosSides: GroupSeed = {
 const drinkSize: GroupSeed = {
   ar: "الحجم",
   de: "Größe",
+  kind: "SIZE",
   selectionType: "SINGLE",
   isRequired: true,
   choices: [
@@ -764,6 +768,7 @@ async function seedMenu() {
             ),
             optionGroups: {
               create: (item.groups ?? []).map((g, gi) => ({
+                kind: g.kind ?? "EXTRA",
                 selectionType: g.selectionType,
                 isRequired: g.isRequired ?? false,
                 isCollapsible: g.isCollapsible ?? false,

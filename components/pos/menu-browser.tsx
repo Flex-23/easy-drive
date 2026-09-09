@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Search, LayoutGrid, List } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
+import { EmptyState } from "@/components/ui/empty-state";
 import { CategoryIcon } from "@/components/ui/icons";
 import { ProductCard } from "./product-card";
 import type { CategoryView, MenuItemView } from "@/types/menu";
@@ -75,7 +76,7 @@ export function MenuBrowser({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={dict.product.searchPlaceholder}
-            className="w-full rounded-[var(--radius-btn)] border border-border bg-surface-muted py-2.5 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent ps-9 pe-3"
+            className="w-full rounded-[var(--radius-btn)] border border-border bg-surface-sunken py-2.5 text-sm text-text outline-none transition-colors placeholder:text-text-faint hover:border-border-strong focus:border-accent focus:bg-surface ps-9 pe-3"
             aria-label={dict.common.search}
           />
         </div>
@@ -84,7 +85,7 @@ export function MenuBrowser({
             onClick={() => setView("grid")}
             aria-pressed={view === "grid"}
             aria-label={dict.product.gridView}
-            className={`press p-2.5 ${view === "grid" ? "bg-accent text-accent-fg" : "text-text-muted hover:text-text"}`}
+            className={`press p-2.5 ${view === "grid" ? "bg-accent text-accent-fg" : "text-text-muted hover:bg-surface-muted hover:text-text"}`}
           >
             <LayoutGrid className="size-4" />
           </button>
@@ -92,7 +93,7 @@ export function MenuBrowser({
             onClick={() => setView("list")}
             aria-pressed={view === "list"}
             aria-label={dict.product.listView}
-            className={`press p-2.5 ${view === "list" ? "bg-accent text-accent-fg" : "text-text-muted hover:text-text"}`}
+            className={`press p-2.5 ${view === "list" ? "bg-accent text-accent-fg" : "text-text-muted hover:bg-surface-muted hover:text-text"}`}
           >
             <List className="size-4" />
           </button>
@@ -111,10 +112,10 @@ export function MenuBrowser({
               key={c.id}
               data-pill={c.id}
               onClick={() => scrollToCategory(c.id)}
-              className={`press flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+              className={`press flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${
                 active
-                  ? "bg-accent text-accent-fg"
-                  : "bg-surface-muted text-text-muted hover:text-text"
+                  ? "bg-accent text-accent-fg shadow-[var(--shadow-sm)]"
+                  : "bg-surface-muted text-text-muted hover:bg-surface-sunken hover:text-text"
               }`}
             >
               <CategoryIcon name={c.icon} className="size-4" />
@@ -127,7 +128,7 @@ export function MenuBrowser({
       {/* Product grid */}
       <div ref={gridRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-3">
         {filtered.length === 0 ? (
-          <p className="mt-10 text-center text-sm text-text-muted">{dict.product.noProducts}</p>
+          <EmptyState icon={Search}>{dict.product.noProducts}</EmptyState>
         ) : (
           filtered.map((c) => (
             <section

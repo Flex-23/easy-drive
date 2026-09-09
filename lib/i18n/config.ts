@@ -9,7 +9,18 @@ export const locales = ["ar", "de"] as const;
 
 export type Locale = (typeof locales)[number];
 
-export const defaultLocale: Locale = "ar";
+/**
+ * The language of each area is fixed, not chosen by whoever is standing at the
+ * machine: the till and everything around it serve customers in **German**,
+ * while the Master panel is the owner's own screen and is **Arabic**.
+ */
+export const defaultLocale: Locale = "de";
+
+/** The POS runs in this language; there is no switcher on that side. */
+export const posLocale: Locale = "de";
+
+/** The Master panel runs in this language, whatever the POS is doing. */
+export const panelLocale: Locale = "ar";
 
 /** Writing direction per locale. */
 export const localeDirection: Record<Locale, "rtl" | "ltr"> = {
@@ -22,14 +33,6 @@ export const localeIntlTag: Record<Locale, string> = {
   ar: "ar-u-nu-latn",
   de: "de-DE",
 };
-
-/** Native label shown in the language switcher. */
-export const localeLabel: Record<Locale, string> = {
-  ar: "ع",
-  de: "DE",
-};
-
-export const LOCALE_COOKIE = "easy_drive_locale";
 
 export function isLocale(value: string): value is Locale {
   return (locales as readonly string[]).includes(value);

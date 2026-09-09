@@ -11,7 +11,11 @@ import type { StreetEntry } from "@/types/street";
  * ignored. Picking a street auto-fills postalCode, city and area — replace the
  * file's contents with your own data; nothing else needs to change.
  */
+/** Parsed once per server process — the file does not change while running. */
+let cached: StreetEntry[] | null = null;
+
 export function getStreets(): StreetEntry[] {
+  if (cached) return cached;
   let raw: string;
   try {
     raw = readFileSync(join(process.cwd(), "streets.txt"), "utf8");
@@ -27,5 +31,6 @@ export function getStreets(): StreetEntry[] {
       .map((p) => p.trim());
     if (street) out.push({ street, postalCode, city, area });
   }
+  cached = out;
   return out;
 }

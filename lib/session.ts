@@ -1,23 +1,26 @@
 import "server-only";
-import { db } from "./db";
+import { redirect } from "next/navigation";
+import { getPosSession, type PosSession } from "./auth/pos-session";
+import type { Locale } from "./i18n/config";
 
 /**
- * Single active-user context. The app runs under one active user for now; a
- * dedicated admin/role-management system will replace this later. The current
- * user is the first active staff member (admins first).
+ * Who is working the till. This is the POS sign-in and nothing else: a Master
+ * admin is not a cashier, so an order can never be booked under an account
+ * that only administers the shop.
  */
-export interface SessionCashier {
-  id: number;
-  name: string;
-  role: "ADMIN" | "CASHIER";
-  avatarColor: string;
-}
+export type SessionCashier = PosSession;
 
 export async function getCurrentCashier(): Promise<SessionCashier | null> {
-  const user = await db.user.findFirst({
-    where: { isActive: true },
-    orderBy: [{ role: "asc" }, { id: "asc" }],
-    select: { id: true, name: true, role: true, avatarColor: true },
-  });
-  return user;
+  return getPosSession();
+}
+
+/**
+ * Guard for every till page. It belongs in the page and not only in the layout:
+ * a layout and its page render in parallel, so a layout-only redirect can still
+ * let the page's data reach the streamed HTML. Call this before any query.
+ */
+export async function requireCashier(locale: Locale): Promise<SessionCashier> {
+  const cashier = await getPosSession();
+  if (!cashier) redirect(`/${locale}/login`);
+  return cashier;
 }

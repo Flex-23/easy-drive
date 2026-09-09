@@ -11,7 +11,7 @@ function safeLocale(v: string): Locale {
 
 function revalidate(locale: Locale) {
   revalidatePath(`/${locale}/drivers`);
-  revalidatePath(`/${locale}/dashboard`);
+  revalidatePath(`/${locale}/daily-report`);
 }
 
 const DISPATCHABLE = ["PENDING", "PREPARING", "READY"] as const;
@@ -39,16 +39,34 @@ export async function assignDriver(
   }
 }
 
-/** Return an assigned order to the unassigned column. */
-export async function unassignDriver(
+/**
+ * Settle an order at the counter. A pickup order is finished by this — the
+ * customer has paid and takes the bag — while a delivery paid this way comes off
+ * its driver, since there is no longer any money to collect on the doorstep.
+ */
+async function settle(
   orderId: number,
+  method: "CASH" | "ONLINE",
   localeRaw: string,
 ): Promise<ActionResult<{ id: number }>> {
   const locale = safeLocale(localeRaw);
   try {
+    const order = await db.order.findUnique({
+      where: { id: orderId },
+      select: { type: true, status: true },
+    });
+    if (!order || order.status === "CANCELLED") {
+      return { ok: false, error: "genericError" };
+    }
+
     await db.order.update({
       where: { id: orderId },
-      data: { driverNumber: null, status: "PREPARING" },
+      data: {
+        paymentMethod: method,
+        paidAt: new Date(),
+        driverNumber: null,
+        status: order.type === "PICKUP" ? "COMPLETED" : "PREPARING",
+      },
     });
     revalidate(locale);
     return { ok: true, data: { id: orderId } };
@@ -57,30 +75,14 @@ export async function unassignDriver(
   }
 }
 
-/**
- * Flag the order as paid online. This takes it off the driver (the customer
- * paid inside the system) and moves it to the paid-online group.
- */
-export async function markPaidOnline(
-  orderId: number,
-  localeRaw: string,
-): Promise<ActionResult<{ id: number }>> {
-  const locale = safeLocale(localeRaw);
-  try {
-    await db.order.update({
-      where: { id: orderId },
-      data: {
-        paymentMethod: "ONLINE",
-        paidAt: new Date(),
-        driverNumber: null,
-        status: "PREPARING",
-      },
-    });
-    revalidate(locale);
-    return { ok: true, data: { id: orderId } };
-  } catch {
-    return { ok: false, error: "genericError" };
-  }
+/** Money in the drawer. */
+export async function markPaidCash(orderId: number, localeRaw: string) {
+  return settle(orderId, "CASH", localeRaw);
+}
+
+/** Money that arrived electronically. */
+export async function markPaidOnline(orderId: number, localeRaw: string) {
+  return settle(orderId, "ONLINE", localeRaw);
 }
 
 /** Cancel the selected delivery order. */

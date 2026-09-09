@@ -7,6 +7,7 @@ import {
   centsToDecimalString,
   type Cents,
 } from "./pricing";
+import { businessDay } from "./business-day";
 import type { Locale } from "./i18n/config";
 import type { OrderLineInput } from "./validations/order";
 
@@ -106,23 +107,40 @@ export async function buildOrderData(
   return { ok: true, linesCreate, totals };
 }
 
-/** Sequential order number per day: YYYYMMDD-NNN. */
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/**
+ * The day's four letters, e.g. `KX…ZR`. They are the day itself written in
+ * base 26, so two different days can never produce the same pair — which is
+ * what makes the order number unique without a lookup or a retry loop. Four
+ * letters carry about 1250 years of days.
+ */
+function dayLetters(dayStart: Date): { prefix: string; suffix: string } {
+  let index = Math.floor(dayStart.getTime() / 86_400_000) % (26 ** 4);
+  const chars: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    chars.unshift(LETTERS[index % 26]);
+    index = Math.floor(index / 26);
+  }
+  return { prefix: chars[0] + chars[1], suffix: chars[2] + chars[3] };
+}
+
+/**
+ * `KX042ZR` — two letters, the order's number within the business day, then two
+ * letters. Short enough to call across the counter, and it carries the day with
+ * it. The counter follows the 05:00 business day, so the first order after the
+ * morning boundary is 001.
+ */
 export async function nextOrderNumber(
   tx: Prisma.TransactionClient,
   now: Date,
 ): Promise<string> {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const prefix = `${y}${m}${d}`;
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const { start, end } = businessDay(now);
+  const { prefix, suffix } = dayLetters(start);
   const count = await tx.order.count({
     where: { createdAt: { gte: start, lt: end } },
   });
-  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+  return `${prefix}${String(count + 1).padStart(3, "0")}${suffix}`;
 }
 
 export { Dc as decimalFromCents };

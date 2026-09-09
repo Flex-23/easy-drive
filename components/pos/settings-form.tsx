@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useTransition, useSyncExternalStore } from "react";
+import { useEffect, useState, useTransition, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor, Printer } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { useToast } from "@/components/ui/toast";
 import { settingsSchema } from "@/lib/validations/settings";
 import { updateSettings } from "@/app/actions/settings";
-import { locales, LOCALE_COOKIE } from "@/lib/i18n/config";
-import { setBrowserCookie } from "@/lib/cookies";
+import { systemPrinters, printTest } from "@/app/actions/print";
+import { posLocale } from "@/lib/i18n/config";
 import {
   getServerTheme,
   getTheme,
@@ -22,22 +22,45 @@ import type { Dictionary } from "@/lib/i18n/types";
 type ValidationKey = keyof Dictionary["validation"];
 
 export function SettingsForm({ initial }: { initial: AppSettings }) {
-  const { locale, dict } = useI18n();
+  const { dict } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const theme = useSyncExternalStore(subscribeTheme, getTheme, getServerTheme);
 
+  /** What Windows reports is attached to this machine. */
+  const [printers, setPrinters] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    systemPrinters().then((list) => {
+      if (alive) setPrinters(list);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  function testPrint() {
+    start(async () => {
+      const res = await printTest();
+      if (res.ok) toast(dict.settings.printTestDone, "success");
+      else toast(errorText(res.error), "error");
+    });
+  }
+
+  const errorText = (key: string) =>
+    (dict.errors as Record<string, string>)[key] ?? dict.toast.genericError;
+
   const [form, setForm] = useState({
     restaurantName: initial.restaurantName,
-    defaultLocale: initial.defaultLocale,
     currency: initial.currency,
     taxRatePercent: (initial.taxRate * 100).toString(),
     deliveryFee: initial.deliveryFee.toFixed(2),
     receiptHeader: initial.receiptHeader,
     receiptFooter: initial.receiptFooter,
     printerName: initial.printerName,
+    printerColumns: String(initial.printerColumns),
   });
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const msg = (key: string) => dict.validation[key as ValidationKey] ?? dict.validation.required;
@@ -45,13 +68,15 @@ export function SettingsForm({ initial }: { initial: AppSettings }) {
   function save() {
     const payload = {
       restaurantName: form.restaurantName,
-      defaultLocale: form.defaultLocale,
+      // Fixed by policy: the till is German, the Master panel is Arabic.
+      defaultLocale: posLocale,
       currency: form.currency,
       taxRatePercent: Number(form.taxRatePercent.replace(",", ".")),
       deliveryFee: Number(form.deliveryFee.replace(",", ".")),
       receiptHeader: form.receiptHeader,
       receiptFooter: form.receiptFooter,
       printerName: form.printerName,
+      printerColumns: Number(form.printerColumns),
     };
     const parsed = settingsSchema.safeParse(payload);
     if (!parsed.success) {
@@ -68,12 +93,7 @@ export function SettingsForm({ initial }: { initial: AppSettings }) {
       const res = await updateSettings(parsed.data);
       if (res.ok) {
         toast(dict.settings.saved, "success");
-        if (res.data.defaultLocale !== locale) {
-          setBrowserCookie(LOCALE_COOKIE, res.data.defaultLocale);
-          router.push(`/${res.data.defaultLocale}/settings`);
-        } else {
-          router.refresh();
-        }
+        router.refresh();
       } else {
         setErrors(res.fieldErrors ?? {});
         toast(dict.toast.genericError, "error");
@@ -122,20 +142,6 @@ export function SettingsForm({ initial }: { initial: AppSettings }) {
           {field("taxRatePercent", dict.settings.taxRate)}
           {field("deliveryFee", dict.settings.deliveryFee, { suffix: "€" })}
         </div>
-        <div className="mt-4">
-          <span className="mb-1.5 block text-xs font-semibold text-text-muted">{dict.settings.language}</span>
-          <div className="inline-flex overflow-hidden rounded-[var(--radius-btn)] border border-border">
-            {locales.map((l) => (
-              <button
-                key={l}
-                onClick={() => set("defaultLocale", l)}
-                className={`press px-4 py-2 text-sm font-semibold ${form.defaultLocale === l ? "bg-accent text-accent-fg" : "text-text-muted hover:text-text"}`}
-              >
-                {l === "ar" ? dict.settings.arabic : dict.settings.german}
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Appearance */}
@@ -166,7 +172,53 @@ export function SettingsForm({ initial }: { initial: AppSettings }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {field("receiptHeader", dict.settings.receiptHeader)}
           {field("receiptFooter", dict.settings.receiptFooter)}
-          {field("printerName", dict.settings.printerName)}
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-text-muted">
+              {dict.settings.printer}
+            </label>
+            <select
+              value={form.printerName}
+              onChange={(e) => set("printerName", e.target.value)}
+              className={`${input} border-border`}
+            >
+              <option value="">{printers.length === 0 ? dict.settings.noPrinters : "—"}</option>
+              {printers.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+              {/* Keep a printer that is configured but currently offline. */}
+              {form.printerName && !printers.includes(form.printerName) ? (
+                <option value={form.printerName}>{form.printerName}</option>
+              ) : null}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-text-muted">
+              {dict.settings.printerColumns}
+            </label>
+            <select
+              value={form.printerColumns}
+              onChange={(e) => set("printerColumns", e.target.value)}
+              className={`${input} border-border`}
+            >
+              <option value="48">{dict.settings.columns48}</option>
+              <option value="32">{dict.settings.columns32}</option>
+            </select>
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={testPrint}
+              disabled={pending || !form.printerName}
+              className="press flex items-center gap-2 rounded-[var(--radius-btn)] border border-border px-4 py-2 text-sm font-semibold text-text-muted hover:bg-surface-muted hover:text-text disabled:opacity-40"
+            >
+              <Printer className="size-4" />
+              {dict.settings.printTest}
+            </button>
+          </div>
         </div>
       </section>
 

@@ -11,6 +11,8 @@ export interface AppSettings {
   receiptHeader: string;
   receiptFooter: string;
   printerName: string;
+  /** Characters per line: 48 on an 80 mm roll, 32 on 58 mm. */
+  printerColumns: number;
 }
 
 const DEFAULTS: AppSettings = {
@@ -21,7 +23,8 @@ const DEFAULTS: AppSettings = {
   deliveryFee: 2.5,
   receiptHeader: "Easy Drive",
   receiptFooter: "",
-  printerName: "TERM-01",
+  printerName: "",
+  printerColumns: 48,
 };
 
 export async function getSettings(): Promise<AppSettings> {
@@ -39,5 +42,8 @@ export async function getSettings(): Promise<AppSettings> {
     receiptHeader: map.get("receiptHeader") ?? DEFAULTS.receiptHeader,
     receiptFooter: map.get("receiptFooter") ?? DEFAULTS.receiptFooter,
     printerName: map.get("printerName") ?? DEFAULTS.printerName,
+    printerColumns: map.has("printerColumns")
+      ? Number(map.get("printerColumns"))
+      : DEFAULTS.printerColumns,
   };
 }

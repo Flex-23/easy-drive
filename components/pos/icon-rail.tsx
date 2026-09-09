@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
   ShoppingBag,
   Package,
   ClipboardList,
@@ -27,9 +26,10 @@ export function IconRail() {
   const top: Item[] = [
     { href: base, label: dict.nav.newOrder, icon: ShoppingBag },
     { href: `${base}/drivers`, label: dict.nav.drivers, icon: Package },
-    { href: `${base}/dashboard`, label: dict.nav.dashboard, icon: LayoutDashboard },
     { href: `${base}/daily-report`, label: dict.nav.dailyReport, icon: ClipboardList },
   ];
+  // The Master panel is intentionally absent: it lives at /panel behind its own
+  // sign-in and is reached by URL, not from the POS.
   const bottom: Item[] = [
     { href: `${base}/settings`, label: dict.nav.settings, icon: Settings },
   ];
@@ -45,9 +45,9 @@ export function IconRail() {
         key={item.href}
         href={item.href}
         aria-current={active ? "page" : undefined}
-        className={`press group relative flex w-full flex-col items-center gap-1 rounded-[var(--radius-btn)] py-2.5 text-[11px] font-medium transition-colors ${
+        className={`press group relative flex w-full flex-col items-center gap-1 rounded-[var(--radius-btn)] py-2.5 text-[11px] font-medium ${
           active
-            ? "bg-accent-weak text-accent"
+            ? "bg-accent-weak text-accent shadow-[var(--shadow-sm)]"
             : "text-text-faint hover:bg-surface-muted hover:text-text"
         }`}
       >

@@ -30,18 +30,27 @@
     "currency": "Euro"
   },
   "nav": {
-    "dashboard": "Übersicht",
     "newOrder": "Neue Bestellung",
-    "onlineOrders": "Online-Bestellungen",
     "drivers": "Bestellungen",
     "dailyReport": "Tagesbericht",
-    "settings": "Einstellungen",
-    "switchUser": "Benutzer wechseln"
+    "settings": "Einstellungen"
+  },
+  "login": {
+    "title": "Kassen-Anmeldung",
+    "subtitle": "PIN eingeben, um zu starten",
+    "pinLabel": "PIN",
+    "enter": "Anmelden",
+    "logout": "Schicht beenden",
+    "errors": {
+      "invalidPin": "Falsche PIN",
+      "tooManyAttempts": "Zu viele Versuche — bitte 5 Minuten warten",
+      "adminNotCashier": "Ein Admin-Konto kann nicht kassieren — bitte Kassierer-Konto verwenden",
+      "genericError": "Ein Fehler ist aufgetreten, bitte erneut versuchen"
+    }
   },
   "drivers": {
     "title": "Bestellungen",
     "pending": "Offene Bestellungen",
-    "assigned": "In Zustellung",
     "processed": "Bearbeitet",
     "cancelled": "Storniert",
     "orderNo": "Nr.",
@@ -55,31 +64,42 @@
     "sum": "Summe",
     "noPending": "Keine offenen Bestellungen",
     "noAssigned": "Keine Bestellungen in Zustellung",
-    "selectHint": "Bestellung wählen, um Details zu sehen",
     "items": "Artikel",
     "address": "Adresse",
     "paid": "Bezahlt",
     "unpaid": "Offen",
     "driver": "Fahrer",
     "refresh": "Aktualisieren",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "orderDetails": "Bestelldetails",
+    "customer": "Kunde",
+    "time": "Zeit",
+    "total": "Gesamt",
+    "print": "Drucken",
+    "printPendingTitle": "Bericht: offene Bestellungen",
+    "printProcessedTitle": "Bericht: bearbeitete Bestellungen",
+    "printScope": "Druckbereich",
+    "scopeAll": "Alle",
+    "scopeDrivers": "Nur Fahrer",
+    "selectForPrint": "Zum Drucken auswählen",
+    "clearSelection": "Auswahl aufheben",
+    "grandTotal": "Gesamtsumme",
+    "withDrivers": "Bei den Fahrern",
+    "alreadyPaid": "davon bereits bezahlt",
+    "payCash": "Bar kassieren",
+    "payOnline": "Online bezahlt",
+    "paidCash": "Bar bezahlt",
+    "pickupHint": "Abholung — bar oder online kassieren",
+    "deliveryHint": "Lieferung — Fahrer-Nr. eingeben oder online bezahlt melden"
   },
   "topbar": {
     "support": "Support",
-    "terminal": "Terminal",
     "version": "Version",
-    "cashier": "Kassierer",
     "languageSwitch": "Sprache wechseln",
     "themeToggle": "Design wechseln",
     "themeLight": "Hell",
     "themeDark": "Dunkel",
-    "themeSystem": "System",
-    "dbConnected": "Datenbank verbunden",
-    "dbReconnecting": "Verbindung zur Datenbank wird wiederhergestellt…",
-    "printerReady": "Drucker bereit",
-    "printerNoPaper": "Drucker: kein Papier",
-    "networkOnline": "Online",
-    "networkOffline": "Offline"
+    "themeSystem": "System"
   },
   "orderType": {
     "dineIn": "Vor Ort",
@@ -102,9 +122,19 @@
     "discountBtn": "Rabatt",
     "splitBill": "Rechnung teilen",
     "holdOrder": "Bestellung parken",
-    "charge": "Kassieren",
+    "charge": "Bestellung senden",
     "items": "Artikel",
     "taxIncluded": "inkl. MwSt."
+  },
+  "held": {
+    "title": "Geparkte Rechnungen",
+    "subtitle": "Rechnung wählen, um sie mit ihren Artikeln fortzusetzen",
+    "empty": "Keine geparkten Rechnungen",
+    "resume": "Fortsetzen",
+    "delete": "Rechnung löschen",
+    "deleteConfirm": "Diese geparkte Rechnung endgültig löschen?",
+    "deleted": "Geparkte Rechnung gelöscht",
+    "missingItems": "Fortgesetzt — einige Artikel stehen nicht mehr auf der Karte"
   },
   "customer": {
     "title": "Kunde",
@@ -146,7 +176,8 @@
     "listView": "Listenansicht",
     "itemNumber": "Artikelnummer",
     "noProducts": "Keine passenden Artikel",
-    "addedToCart": "Zur Bestellung hinzugefügt"
+    "addedToCart": "Zur Bestellung hinzugefügt",
+    "priceFrom": "ab"
   },
   "modal": {
     "selectionRequired": "(Auswahl erforderlich)",
@@ -158,55 +189,25 @@
     "chooseMany": "Beliebig wählen"
   },
   "payment": {
-    "title": "Zahlung",
     "cash": "Bar",
-    "card": "Karte",
     "online": "Online",
-    "cashTendered": "Gegeben",
-    "change": "Rückgeld",
-    "amountDue": "Zu zahlen",
-    "complete": "Zahlung abschließen",
-    "method": "Zahlungsart",
-    "insufficientCash": "Gegebener Betrag ist zu niedrig",
-    "quickAmounts": "Schnellbeträge"
+    "method": "Zahlungsart"
   },
   "receipt": {
-    "title": "Beleg",
-    "thankYou": "Vielen Dank für Ihren Besuch",
-    "order": "Bestellung",
-    "date": "Datum",
     "cashier": "Kassierer",
-    "item": "Artikel",
-    "qty": "Menge",
-    "price": "Preis",
-    "table": "Tisch",
-    "printReceipt": "Beleg drucken"
+    "item": "Artikel"
   },
-  "dashboard": {
-    "title": "Übersicht",
-    "revenueToday": "Umsatz heute",
-    "orderCount": "Bestellungen",
-    "avgTicket": "Ø Bestellwert",
-    "activeDeliveries": "Aktive Lieferungen",
-    "revenueByHour": "Umsatz nach Stunde",
-    "recentOrders": "Neueste Bestellungen",
-    "noOrders": "Noch keine Bestellungen",
-    "viewAll": "Alle anzeigen"
-  },
-  "onlineOrders": {
-    "title": "Online-Bestellungen",
-    "empty": "Keine eingehenden Online-Bestellungen",
-    "accept": "Annehmen",
-    "reject": "Ablehnen",
-    "printLabel": "Drucken",
-    "newBadge": "Neu",
-    "timeLeft": "Verbleibende Zeit",
-    "source": "Online",
-    "pendingCount": "Ausstehend"
+  "tickets": {
+    "receipt": "Kundenbeleg",
+    "receiptTitle": "Beleg",
+    "kitchen": "Für die Küche",
+    "kitchenTitle": "Küchenbon",
+    "label": "Adresse + QR",
+    "labelTitle": "Adressetikett",
+    "unofficial": "Kein offizieller Beleg"
   },
   "dailyReport": {
     "title": "Tagesbericht",
-    "selectDate": "Datum wählen",
     "orders": "Bestellungen",
     "paymentBreakdown": "Zahlungsarten",
     "closingSummary": "Tagesabschluss",
@@ -218,7 +219,132 @@
     "type": "Art",
     "status": "Status",
     "amount": "Betrag",
-    "averageTicket": "Ø Bestellwert"
+    "averageTicket": "Ø Bestellwert",
+    "revenueToday": "Umsatz heute",
+    "orderCount": "Bestellungen",
+    "activeDeliveries": "Aktive Lieferungen",
+    "revenueByHour": "Umsatz nach Stunde",
+    "print": "Bericht drucken",
+    "printTitle": "Tagesumsatzbericht",
+    "deliveryBreakdown": "Lieferauswertung",
+    "deliveryOrders": "Lieferbestellungen",
+    "driver": "Fahrer",
+    "driverOrders": "Bestellungen",
+    "paidOnlineOrders": "Online bezahlte Bestellungen",
+    "cancelledOrders": "Stornierte Bestellungen",
+    "grandTotal": "Gesamtsumme",
+    "noDeliveries": "Heute keine Lieferbestellungen",
+    "printedAt": "Gedruckt am",
+    "byType": "Nach Bestellart"
+  },
+  "master": {
+    "title": "Master",
+    "subtitle": "Restaurantverwaltung",
+    "tabs": {
+      "menu": "Speisekarte",
+      "staff": "Benutzer",
+      "sales": "Umsatz"
+    },
+    "menu": {
+      "title": "Kategorien & Gerichte",
+      "categories": "Kategorien",
+      "items": "Gerichte",
+      "addCategory": "Kategorie hinzufügen",
+      "editCategory": "Kategorie bearbeiten",
+      "addItem": "Gericht hinzufügen",
+      "editItem": "Gericht bearbeiten",
+      "slug": "Kennung (englisch)",
+      "icon": "Symbol",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "popular": "Beliebt",
+      "itemNumber": "Artikelnummer",
+      "price": "Preis",
+      "category": "Kategorie",
+      "options": "Optionsgruppen",
+      "allCategories": "Alle Kategorien",
+      "searchHint": "Nach Name oder Nummer suchen…",
+      "noItems": "Keine passenden Gerichte",
+      "noCategories": "Noch keine Kategorien",
+      "itemsCount": "Gerichte",
+      "deleteCategoryConfirm": "Diese Kategorie endgültig löschen?",
+      "deleteItemConfirm": "Dieses Gericht endgültig löschen?",
+      "activate": "Aktivieren",
+      "deactivate": "Deaktivieren",
+      "saved": "Speisekarte gespeichert",
+      "deleted": "Gelöscht",
+      "usedInOrders": "In Bestellungen verwendet",
+      "sizes": "Größen",
+      "addSize": "Größe hinzufügen",
+      "sizeName": "Größe",
+      "sizeExample": "z. B. 30×20 cm",
+      "sizePrice": "Preis",
+      "removeSize": "Größe entfernen",
+      "sizesHint": "Leer lassen, wenn das Gericht einen einzigen Preis hat — sonst je Preis eine Größe anlegen.",
+      "sizesDefaultHint": "Die erste Größe ist die Voreinstellung; ihr Preis erscheint auf der Kassenkachel.",
+      "priceFromSizes": "Ergibt sich aus den Größen",
+      "name": "Name",
+      "description": "Beschreibung"
+    },
+    "staff": {
+      "title": "Benutzer",
+      "add": "Benutzer hinzufügen",
+      "edit": "Benutzer bearbeiten",
+      "name": "Name",
+      "role": "Rolle",
+      "pin": "PIN",
+      "pinHint": "Vier Ziffern",
+      "pinKeep": "Leer lassen, um die aktuelle PIN zu behalten",
+      "color": "Farbe",
+      "active": "Aktiv",
+      "orders": "Bestellungen",
+      "created": "Angelegt am",
+      "deleteConfirm": "Diesen Benutzer endgültig löschen?",
+      "noStaff": "Keine Benutzer",
+      "saved": "Benutzer gespeichert",
+      "deleted": "Benutzer gelöscht"
+    },
+    "sales": {
+      "title": "Umsatz",
+      "revenue": "Umsatz",
+      "orders": "Bestellungen",
+      "avgTicket": "Ø Bestellwert",
+      "cancelled": "Storniert",
+      "byDay": "Umsatz nach Tag",
+      "byType": "Nach Bestellart",
+      "byMethod": "Nach Zahlungsart",
+      "topItems": "Meistverkaufte Gerichte",
+      "byCashier": "Nach Kassierer",
+      "byDriver": "Nach Fahrer",
+      "quantity": "Menge",
+      "amount": "Betrag",
+      "count": "Anzahl",
+      "item": "Gericht",
+      "noData": "Keine Daten in diesem Zeitraum",
+      "range": "Zeitraum",
+      "day": "Tag",
+      "month": "Monat",
+      "byHour": "Umsatz nach Stunde"
+    },
+    "errors": {
+      "slugExists": "Kennung bereits vergeben",
+      "itemNumberExists": "Artikelnummer bereits vergeben",
+      "categoryNotEmpty": "Kategorie mit Gerichten kann nicht gelöscht werden",
+      "itemInUse": "Gericht ist in Bestellungen verwendet — bitte deaktivieren statt löschen",
+      "lastAdmin": "Mindestens ein aktiver Admin muss bestehen bleiben",
+      "staffInUse": "Benutzer hat Bestellungen — bitte deaktivieren statt löschen",
+      "invalidPin": "Falsche PIN",
+      "tooManyAttempts": "Zu viele Versuche — bitte 5 Minuten warten",
+      "unauthorized": "Sitzung abgelaufen — bitte neu anmelden"
+    },
+    "signedInAs": "Angemeldet als",
+    "logout": "Abmelden",
+    "login": {
+      "title": "Master-Anmeldung",
+      "subtitle": "Admin-PIN eingeben",
+      "pinLabel": "PIN",
+      "enter": "Anmelden"
+    }
   },
   "settings": {
     "title": "Einstellungen",
@@ -236,16 +362,15 @@
     "printerName": "Druckername",
     "saved": "Einstellungen gespeichert",
     "arabic": "Arabisch",
-    "german": "Deutsch"
-  },
-  "switchUser": {
-    "title": "Benutzer wechseln",
-    "enterPin": "PIN eingeben",
-    "wrongPin": "Falsche PIN",
-    "tooManyAttempts": "Zu viele Versuche, später erneut",
-    "selectUser": "Benutzer wählen",
-    "welcome": "Willkommen",
-    "signIn": "Anmelden"
+    "german": "Deutsch",
+    "printer": "Drucker",
+    "printerColumns": "Papierbreite",
+    "printTest": "Testdruck",
+    "printTestDone": "Testdruck gesendet",
+    "noPrinters": "Keine installierten Drucker gefunden",
+    "refreshPrinters": "Druckerliste aktualisieren",
+    "columns48": "80 mm (48 Zeichen)",
+    "columns32": "58 mm (32 Zeichen)"
   },
   "status": {
     "DRAFT": "Entwurf",
@@ -261,18 +386,15 @@
     "CASHIER": "Kassierer"
   },
   "toast": {
-    "orderCreated": "Bestellung erstellt",
     "orderHeld": "Bestellung geparkt",
     "orderResumed": "Bestellung fortgesetzt",
-    "orderPaid": "Zahlung erfolgreich",
     "orderCancelled": "Bestellung storniert",
     "customerSaved": "Kunde gespeichert",
-    "settingsSaved": "Einstellungen gespeichert",
-    "onlineOrderAccepted": "Bestellung angenommen",
-    "onlineOrderRejected": "Bestellung abgelehnt",
     "driverAssigned": "Bestellung dem Fahrer zugewiesen",
     "paidOnlineMarked": "Als online bezahlt markiert",
-    "genericError": "Ein Fehler ist aufgetreten, bitte erneut versuchen"
+    "genericError": "Ein Fehler ist aufgetreten, bitte erneut versuchen",
+    "orderSent": "Bestellung an die Bestellübersicht gesendet",
+    "paidCashMarked": "Barzahlung erfasst"
   },
   "validation": {
     "required": "Dieses Feld ist erforderlich",
@@ -288,12 +410,18 @@
     "cashInsufficient": "Der gegebene Betrag ist zu niedrig",
     "emptyOrder": "Die Bestellung ist leer",
     "phoneExists": "Telefonnummer wird bereits verwendet",
-    "taxRateRange": "Der Steuersatz muss zwischen 0 und 100 liegen"
+    "taxRateRange": "Der Steuersatz muss zwischen 0 und 100 liegen",
+    "invalidSlug": "Nur Kleinbuchstaben, Ziffern und Bindestriche",
+    "invalidColor": "Ungültige Farbe (#RRGGBB)",
+    "duplicateSize": "Größe doppelt vergeben"
   },
   "errors": {
     "notFound": "Seite nicht gefunden",
     "somethingWrong": "Etwas ist schiefgelaufen",
     "tryAgain": "Erneut versuchen",
-    "backHome": "Zurück zur Startseite"
+    "backHome": "Zurück zur Startseite",
+    "printerNotConfigured": "Kein Drucker gewählt — bitte in den Einstellungen wählen",
+    "printerFailed": "Druck konnte nicht gesendet werden",
+    "printerUnsupportedPlatform": "Direktdruck wird nur unter Windows unterstützt"
   }
 }

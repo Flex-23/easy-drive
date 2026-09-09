@@ -74,6 +74,7 @@ export async function getMenu(locale: Locale): Promise<CategoryView[]> {
             groups: item.optionGroups.map((g) => ({
               id: g.id,
               name: name(g.translations, locale),
+              kind: g.kind,
               selectionType: g.selectionType,
               isRequired: g.isRequired,
               isCollapsible: g.isCollapsible,

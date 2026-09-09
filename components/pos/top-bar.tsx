@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
-import {
-  Headset,
-  MonitorSmartphone,
-  Database,
-  Printer,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Headset, LogOut } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
+import { posLogout } from "@/app/actions/pos-auth";
 import { formatTime } from "@/lib/money";
 import { Wordmark } from "@/components/ui/logo";
-import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 function Clock() {
@@ -33,57 +26,19 @@ function Clock() {
   );
 }
 
-function StatusDot({
-  ok,
-  icon: Icon,
-  label,
-}: {
-  ok: boolean;
-  icon: typeof Database;
-  label: string;
-}) {
-  return (
-    <span
-      title={label}
-      aria-label={label}
-      className={`flex size-8 items-center justify-center rounded-[var(--radius-btn)] ${
-        ok ? "text-success" : "text-warning"
-      }`}
-    >
-      <Icon className="size-[18px]" />
-    </span>
-  );
-}
-
 export function TopBar({
   restaurantName,
   cashierName,
-  dbHealthy,
   version,
-  terminalId,
 }: {
   restaurantName: string;
   cashierName: string | null;
-  dbHealthy: boolean;
   version: string;
-  terminalId: string;
 }) {
   const { dict } = useI18n();
-  const online = useSyncExternalStore(
-    (cb) => {
-      window.addEventListener("online", cb);
-      window.addEventListener("offline", cb);
-      return () => {
-        window.removeEventListener("online", cb);
-        window.removeEventListener("offline", cb);
-      };
-    },
-    () => navigator.onLine,
-    () => true,
-  );
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-surface px-4">
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 shadow-[var(--shadow-sm)]">
       {/* inline-start: brand + cashier */}
       <div className="flex min-w-0 items-center gap-3">
         <Wordmark className="text-sm font-extrabold tracking-tight text-text" />
@@ -98,7 +53,7 @@ export function TopBar({
 
       <div className="flex-1" />
 
-      {/* center/end: support, terminal, version, status */}
+      {/* center/end: support and version — nothing else earns the space */}
       <div className="hidden items-center gap-1 md:flex">
         <a
           href="mailto:support@easydrive.app"
@@ -107,36 +62,36 @@ export function TopBar({
           <Headset className="size-4" />
           <span>{dict.topbar.support}</span>
         </a>
-        <span className="flex items-center gap-1.5 px-2 text-xs text-text-faint">
-          <MonitorSmartphone className="size-4" />
-          <span className="tnum">{terminalId}</span>
-        </span>
-        <span className="px-1 text-xs text-text-faint tnum">
+        <span className="tnum px-1 text-xs text-text-faint">
           {dict.topbar.version} {version}
         </span>
-        <div className="mx-1 flex items-center">
-          <StatusDot
-            ok={dbHealthy}
-            icon={Database}
-            label={dbHealthy ? dict.topbar.dbConnected : dict.topbar.dbReconnecting}
-          />
-          <StatusDot ok icon={Printer} label={dict.topbar.printerReady} />
-          <StatusDot
-            ok={online}
-            icon={online ? Wifi : WifiOff}
-            label={online ? dict.topbar.networkOnline : dict.topbar.networkOffline}
-          />
-        </div>
       </div>
 
       <span className="mx-1 hidden h-5 w-px bg-border md:block" />
 
-      {/* inline-end: clock, language, theme */}
+      {/* inline-end: clock, theme, end of shift */}
       <div className="flex items-center gap-2">
         <Clock />
-        <LanguageSwitcher />
         <ThemeToggle />
+        <SignOutButton />
       </div>
     </header>
+  );
+}
+
+/** Ends the cashier's shift and returns the terminal to the sign-in screen. */
+function SignOutButton() {
+  const { locale, dict } = useI18n();
+  const [pending, start] = useTransition();
+  return (
+    <button
+      onClick={() => start(() => posLogout(locale))}
+      disabled={pending}
+      aria-label={dict.login.logout}
+      title={dict.login.logout}
+      className="press flex size-8 items-center justify-center rounded-[var(--radius-btn)] text-text-faint hover:bg-surface-muted hover:text-danger disabled:opacity-50"
+    >
+      <LogOut className="size-[18px]" />
+    </button>
   );
 }

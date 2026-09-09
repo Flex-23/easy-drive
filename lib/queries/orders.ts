@@ -2,22 +2,26 @@ import "server-only";
 import { db } from "../db";
 import { eurosToCents } from "../pricing";
 import type { Locale } from "../i18n/config";
+import {
+  businessDay,
+  businessHourIndex,
+  businessHourLabel,
+} from "../business-day";
 import type { OrderStatus, OrderType, PaymentMethod } from "@prisma/client";
 
 const dec = (v: { toString(): string }) => eurosToCents(v.toString());
 
-function dayBounds(date: Date): { start: Date; end: Date } {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
-}
+/**
+ * Payment as the reports state it: cash, or electronic. A card terminal and an
+ * online payment are the same thing to the shop — the money did not go into the
+ * drawer — so `CARD` is reported as `ONLINE`. Orders keep their exact method.
+ */
+export const REPORTED_METHODS = ["CASH", "ONLINE"] as const;
+export type ReportedMethod = (typeof REPORTED_METHODS)[number];
 
-export async function getPendingOnlineCount(): Promise<number> {
-  return db.order.count({
-    where: { source: "ONLINE", status: "PENDING" },
-  });
+export function reportedMethod(method: PaymentMethod | null): ReportedMethod | null {
+  if (method === null) return null;
+  return method === "CASH" ? "CASH" : "ONLINE";
 }
 
 export interface OrderCardLine {
@@ -68,7 +72,7 @@ async function toOrderCards(where: object): Promise<OrderCard[]> {
             : o.address.city,
         ]
           .filter(Boolean)
-          .join("، ")
+          .join(", ")
       : null,
     tableNumber: o.tableNumber,
     lines: o.lines.map((l) => ({
@@ -80,91 +84,9 @@ async function toOrderCards(where: object): Promise<OrderCard[]> {
   }));
 }
 
-export function getOnlineOrders(): Promise<OrderCard[]> {
-  return toOrderCards({ source: "ONLINE", status: "PENDING" });
-}
-
+/** The parked bills, oldest first. */
 export function getHeldOrders(): Promise<OrderCard[]> {
   return toOrderCards({ status: "HELD" });
-}
-
-export interface DashboardData {
-  revenueToday: number;
-  orderCount: number;
-  avgTicket: number;
-  activeDeliveries: number;
-  revenueByHour: { hour: number; revenue: number }[];
-  recentOrders: {
-    id: number;
-    orderNumber: string;
-    type: OrderType;
-    status: OrderStatus;
-    total: number;
-    createdAt: string;
-    customerName: string | null;
-  }[];
-}
-
-export async function getDashboard(now = new Date()): Promise<DashboardData> {
-  const { start, end } = dayBounds(now);
-
-  // Revenue counts money actually collected (paid orders), regardless of
-  // whether a delivery is still out with a driver.
-  const todaysPaid = await db.order.findMany({
-    where: {
-      paidAt: { gte: start, lt: end },
-      status: { not: "CANCELLED" },
-    },
-    select: { total: true, paidAt: true },
-  });
-
-  const revenueToday = todaysPaid.reduce(
-    (acc, o) => acc + Number(o.total.toString()),
-    0,
-  );
-  const orderCount = todaysPaid.length;
-  const avgTicket = orderCount > 0 ? revenueToday / orderCount : 0;
-
-  const activeDeliveries = await db.order.count({
-    where: {
-      type: "DELIVERY",
-      status: { in: ["PENDING", "PREPARING", "READY"] },
-    },
-  });
-
-  const buckets = new Map<number, number>();
-  for (let h = 9; h <= 23; h++) buckets.set(h, 0);
-  for (const o of todaysPaid) {
-    const h = (o.paidAt ?? start).getHours();
-    buckets.set(h, (buckets.get(h) ?? 0) + Number(o.total.toString()));
-  }
-  const revenueByHour = [...buckets.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([hour, revenue]) => ({ hour, revenue }));
-
-  const recent = await db.order.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 8,
-    include: { customer: { select: { name: true } } },
-  });
-  const recentOrders = recent.map((o) => ({
-    id: o.id,
-    orderNumber: o.orderNumber,
-    type: o.type,
-    status: o.status,
-    total: Number(o.total.toString()),
-    createdAt: o.createdAt.toISOString(),
-    customerName: o.customer?.name ?? null,
-  }));
-
-  return {
-    revenueToday,
-    orderCount,
-    avgTicket,
-    activeDeliveries,
-    revenueByHour,
-    recentOrders,
-  };
 }
 
 export interface DailyReportRow {
@@ -174,60 +96,150 @@ export interface DailyReportRow {
   type: OrderType;
   status: OrderStatus;
   paymentMethod: PaymentMethod | null;
+  driverNumber: number | null;
   total: number;
 }
+
+/** One delivery driver's share of the day. */
+export interface DriverTally {
+  driverNumber: number;
+  count: number;
+  total: number;
+}
+
 export interface DailyReport {
   date: string;
   rows: DailyReportRow[];
   totalOrders: number;
   totalRevenue: number;
   averageTicket: number;
-  byMethod: { method: PaymentMethod; count: number; total: number }[];
+  byMethod: { method: ReportedMethod; count: number; total: number }[];
+  /** Paid orders split by how they were served — the printed sheet lists these. */
+  byType: { type: OrderType; count: number; total: number }[];
+  /** Money taken per hour of the business day, 05:00 first (bar chart). */
+  revenueByHour: { label: string; revenue: number }[];
+  /** Deliveries still out (not date-bound — it is a live figure). */
+  activeDeliveries: number;
+  /** Every delivery that left the shop today (driver or paid online). */
+  delivery: { count: number; total: number };
+  byDriver: DriverTally[];
+  paidOnline: { count: number; total: number };
+  cancelled: { count: number; total: number };
 }
 
-export async function getDailyReport(date: Date): Promise<DailyReport> {
-  const { start, end } = dayBounds(date);
+/** The closing report for a single day; defaults to today. */
+export async function getDailyReport(date: Date = new Date()): Promise<DailyReport> {
+  const { start, end } = businessDay(date);
   const orders = await db.order.findMany({
-    where: {
-      createdAt: { gte: start, lt: end },
-      status: { not: "CANCELLED" },
-    },
+    where: { createdAt: { gte: start, lt: end } },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
       orderNumber: true,
       createdAt: true,
+      paidAt: true,
       type: true,
       status: true,
       paymentMethod: true,
+      driverNumber: true,
       total: true,
     },
   });
 
-  const rows = orders.map((o) => ({
+  const all = orders.map((o) => ({
     id: o.id,
     orderNumber: o.orderNumber,
     time: o.createdAt.toISOString(),
+    paidAt: o.paidAt,
     type: o.type,
     status: o.status,
     paymentMethod: o.paymentMethod,
+    driverNumber: o.driverNumber,
     total: Number(o.total.toString()),
   }));
 
+  const live = all.filter((r) => r.status !== "CANCELLED");
+  const rows: DailyReportRow[] = live.map((r) => ({
+    id: r.id,
+    orderNumber: r.orderNumber,
+    time: r.time,
+    type: r.type,
+    status: r.status,
+    paymentMethod: r.paymentMethod,
+    driverNumber: r.driverNumber,
+    total: r.total,
+  }));
+
   // Paid orders drive the revenue figures (a delivery can be paid but still out).
-  const paid = rows.filter((r) => r.paymentMethod !== null);
+  const paid = live.filter((r) => r.paymentMethod !== null);
   const totalRevenue = paid.reduce((acc, r) => acc + r.total, 0);
   const totalOrders = paid.length;
 
-  const methods: PaymentMethod[] = ["CASH", "CARD", "ONLINE"];
-  const byMethod = methods.map((method) => {
-    const subset = paid.filter((r) => r.paymentMethod === method);
+  // Card and online are one and the same for the till: money that arrived
+  // electronically rather than as notes in the drawer. Only cash is separate.
+  const byMethod = REPORTED_METHODS.map((method) => {
+    const subset = paid.filter((r) => reportedMethod(r.paymentMethod) === method);
     return {
       method,
       count: subset.length,
       total: subset.reduce((acc, r) => acc + r.total, 0),
     };
   });
+
+  const orderTypes: OrderType[] = ["DELIVERY", "PICKUP", "DINE_IN"];
+  const byType = orderTypes.map((type) => {
+    const subset = paid.filter((r) => r.type === type);
+    return {
+      type,
+      count: subset.length,
+      total: subset.reduce((acc, r) => acc + r.total, 0),
+    };
+  });
+
+  // One slot per hour of the business day: 05:00 first, 04:00 last.
+  const buckets = new Array<number>(24).fill(0);
+  for (const o of live) {
+    if (!o.paidAt) continue;
+    buckets[businessHourIndex(o.paidAt)] += o.total;
+  }
+  const revenueByHour = buckets.map((revenue, index) => ({
+    label: businessHourLabel(index),
+    revenue,
+  }));
+
+  const activeDeliveries = await db.order.count({
+    where: {
+      type: "DELIVERY",
+      status: { in: ["PENDING", "PREPARING", "READY"] },
+    },
+  });
+
+  // --- Delivery breakdown: what went out, with whom, and what was voided. ---
+  const deliveries = all.filter((r) => r.type === "DELIVERY");
+  const dispatched = deliveries.filter(
+    (r) => r.status !== "CANCELLED" && (r.driverNumber !== null || r.paymentMethod === "ONLINE"),
+  );
+
+  const driverMap = new Map<number, DriverTally>();
+  for (const o of dispatched) {
+    if (o.driverNumber === null) continue;
+    const tally = driverMap.get(o.driverNumber) ?? {
+      driverNumber: o.driverNumber,
+      count: 0,
+      total: 0,
+    };
+    tally.count += 1;
+    tally.total += o.total;
+    driverMap.set(o.driverNumber, tally);
+  }
+  const byDriver = [...driverMap.values()].sort(
+    (a, b) => a.driverNumber - b.driverNumber,
+  );
+
+  const online = dispatched.filter(
+    (r) => r.driverNumber === null && r.paymentMethod === "ONLINE",
+  );
+  const voided = deliveries.filter((r) => r.status === "CANCELLED");
 
   return {
     date: start.toISOString(),
@@ -236,6 +248,22 @@ export async function getDailyReport(date: Date): Promise<DailyReport> {
     totalRevenue,
     averageTicket: totalOrders > 0 ? totalRevenue / totalOrders : 0,
     byMethod,
+    byType,
+    revenueByHour,
+    activeDeliveries,
+    delivery: {
+      count: dispatched.length,
+      total: dispatched.reduce((acc, r) => acc + r.total, 0),
+    },
+    byDriver,
+    paidOnline: {
+      count: online.length,
+      total: online.reduce((acc, r) => acc + r.total, 0),
+    },
+    cancelled: {
+      count: voided.length,
+      total: voided.reduce((acc, r) => acc + r.total, 0),
+    },
   };
 }
 

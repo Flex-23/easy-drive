@@ -29,6 +29,7 @@ export async function updateSettings(
     { key: "receiptHeader", value: d.receiptHeader, type: "STRING" },
     { key: "receiptFooter", value: d.receiptFooter, type: "STRING" },
     { key: "printerName", value: d.printerName, type: "STRING" },
+    { key: "printerColumns", value: String(d.printerColumns), type: "NUMBER" },
   ];
 
   try {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { UserPlus, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { UserPlus, X, PauseCircle } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { computeOrderTotals } from "@/lib/pricing";
 import { useToast } from "@/components/ui/toast";
@@ -9,30 +10,38 @@ import { OrderTypeTabs, type OrderType } from "./order-type-tabs";
 import { CartColumn } from "./cart-column";
 import { MenuBrowser } from "./menu-browser";
 import { ProductModal } from "./product-modal";
-import { PaymentModal } from "./payment-modal";
 import { DiscountModal } from "./discount-modal";
 import { SplitModal } from "./split-modal";
 import { CustomerSelectModal } from "./customer-select-modal";
-import { ReceiptModal } from "./receipt-modal";
-import { holdOrder, payOrder } from "@/app/actions/orders";
+import { HeldOrdersModal } from "./held-orders-modal";
+import {
+  holdOrder,
+  createOrder,
+  resumeOrder,
+  deleteHeldOrder,
+} from "@/app/actions/orders";
+import { printNewOrder } from "@/app/actions/print";
 import type { CategoryView, MenuItemView } from "@/types/menu";
-import type { CartLine, ReceiptData } from "@/types/order";
+import type { CartLine, CartLineOption } from "@/types/order";
 import type { CustomerView } from "@/lib/queries/customers";
-import type { StreetEntry } from "@/types/street";
+import type { OrderCard } from "@/lib/queries/orders";
 
 export function OrderWorkspace({
   categories,
   taxRate,
   deliveryFee,
-  streets,
+  heldOrders,
 }: {
   categories: CategoryView[];
   taxRate: number;
   deliveryFee: number;
-  streets: StreetEntry[];
+  heldOrders: OrderCard[];
 }) {
   const { locale, dict } = useI18n();
+  const errorText = (key: string) =>
+    (dict.errors as Record<string, string>)[key] ?? dict.toast.genericError;
   const { toast } = useToast();
+  const router = useRouter();
   const [pending, start] = useTransition();
 
   const [orderType, setOrderType] = useState<OrderType>("PICKUP");
@@ -41,11 +50,19 @@ export function OrderWorkspace({
   const [customer, setCustomer] = useState<CustomerView | null>(null);
 
   const [activeItem, setActiveItem] = useState<MenuItemView | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
   const [showDiscount, setShowDiscount] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [showCustomer, setShowCustomer] = useState(false);
-  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [showHeld, setShowHeld] = useState(false);
+
+  // Menu lookup for rebuilding a parked bill's lines.
+  const itemsById = useMemo(() => {
+    const map = new Map<number, MenuItemView>();
+    for (const category of categories) {
+      for (const item of category.items) map.set(item.id, item);
+    }
+    return map;
+  }, [categories]);
 
   const deliveryCents = orderType === "DELIVERY" ? Math.round(deliveryFee * 100) : 0;
 
@@ -117,36 +134,105 @@ export function OrderWorkspace({
       if (res.ok) {
         toast(dict.toast.orderHeld, "success");
         reset();
+        router.refresh();
       } else {
         toast(dict.toast.genericError, "error");
       }
     });
   }
 
+  /**
+   * Bring a parked bill back to the till. Lines are rebuilt against today's
+   * menu, so prices and options are the current ones; anything that has since
+   * left the menu is dropped and reported.
+   */
+  function resume(id: number) {
+    start(async () => {
+      const res = await resumeOrder(id, locale);
+      if (!res.ok) {
+        toast(dict.toast.genericError, "error");
+        return;
+      }
+      const { data } = res;
+      const rebuilt: CartLine[] = [];
+      let dropped = 0;
+
+      data.lines.forEach((line, index) => {
+        const item = line.itemId === null ? undefined : itemsById.get(line.itemId);
+        if (!item) {
+          dropped += 1;
+          return;
+        }
+        const options: CartLineOption[] = [];
+        for (const saved of line.options) {
+          for (const group of item.groups) {
+            const choice = group.choices.find((c) => c.name === saved.choiceName);
+            if (!choice) continue;
+            options.push({
+              groupId: group.id,
+              choiceId: choice.id,
+              groupName: group.name,
+              choiceName: choice.name,
+              priceDelta: choice.priceDelta,
+            });
+            break;
+          }
+        }
+        rebuilt.push({
+          uid: `${item.id}-${Date.now()}-${index}`,
+          itemId: item.id,
+          itemNumber: item.itemNumber,
+          name: item.name,
+          categoryName: item.categoryName,
+          basePrice: item.basePrice,
+          quantity: line.quantity,
+          options,
+        });
+      });
+
+      setLines(rebuilt);
+      setOrderType(data.type);
+      setDiscountCents(data.discount);
+      setCustomer(data.customer);
+      setShowHeld(false);
+      // The bill left the parked list the moment it was recalled.
+      router.refresh();
+      if (dropped > 0) toast(dict.held.missingItems, "info");
+      else toast(dict.toast.orderResumed, "success");
+    });
+  }
+
+  function removeHeld(id: number) {
+    start(async () => {
+      const res = await deleteHeldOrder(id, locale);
+      if (res.ok) {
+        toast(dict.held.deleted, "success");
+        router.refresh();
+      } else {
+        toast(dict.toast.genericError, "error");
+      }
+    });
+  }
+
+  /**
+   * Send the finished cart to the orders board. Nothing is paid here: the board
+   * is where an order is handed to a driver or settled in cash or online.
+   */
   function charge() {
     if (lines.length === 0) return;
     if (!validateBeforeCheckout()) return;
-    setShowPayment(true);
-  }
-
-  function confirmPay(method: "CASH" | "CARD" | "ONLINE", tenderedCents: number | null) {
     start(async () => {
-      const res = await payOrder({
-        ...buildPayload(),
-        paymentMethod: method,
-        cashTenderedCents: tenderedCents,
-      });
+      const res = await createOrder(buildPayload());
       if (res.ok) {
-        setShowPayment(false);
-        setReceipt(res.data);
+        toast(dict.toast.orderSent, "success");
+        // The customer copy and the kitchen bon go straight to the printer.
+        printNewOrder(res.data.id).then((print) => {
+          if (!print.ok) toast(errorText(print.error), "error");
+        });
         reset();
+        router.refresh();
       } else {
-        toast(
-          res.error === "cashInsufficient"
-            ? dict.payment.insufficientCash
-            : dict.toast.genericError,
-          "error",
-        );
+        toast(dict.toast.genericError, "error");
       }
     });
   }
@@ -162,6 +248,24 @@ export function OrderWorkspace({
         </div>
 
         <div className="ms-auto flex items-center gap-2">
+          {/* Parked bills — the way back to anything put aside. */}
+          <button
+            onClick={() => setShowHeld(true)}
+            className={`press flex items-center gap-2 rounded-[var(--radius-btn)] border px-3 py-2 text-sm font-semibold shadow-[var(--shadow-sm)] hover:bg-surface-muted ${
+              heldOrders.length > 0
+                ? "border-warning bg-warning-weak text-warning"
+                : "border-border bg-surface text-text-muted"
+            }`}
+          >
+            <PauseCircle className="size-4" />
+            {dict.held.title}
+            {heldOrders.length > 0 ? (
+              <span className="tnum inline-flex min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-xs font-bold text-white">
+                {heldOrders.length}
+              </span>
+            ) : null}
+          </button>
+
           {customer ? (
             <div
               className={`flex items-center gap-2 rounded-[var(--radius-btn)] border bg-surface px-3 py-2 shadow-[var(--shadow-sm)] ${needsAddress ? "border-danger" : "border-border"}`}
@@ -216,13 +320,6 @@ export function OrderWorkspace({
       </div>
 
       <ProductModal item={activeItem} onClose={() => setActiveItem(null)} onAdd={addLine} />
-      <PaymentModal
-        open={showPayment}
-        total={totals.total}
-        busy={pending}
-        onClose={() => setShowPayment(false)}
-        onConfirm={confirmPay}
-      />
       <DiscountModal
         open={showDiscount}
         current={discountCents}
@@ -237,7 +334,6 @@ export function OrderWorkspace({
       {showCustomer ? (
         <CustomerSelectModal
           open
-          streets={streets}
           onClose={() => setShowCustomer(false)}
           onAttach={(c) => {
             setCustomer(c);
@@ -245,7 +341,15 @@ export function OrderWorkspace({
           }}
         />
       ) : null}
-      <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+      {showHeld ? (
+        <HeldOrdersModal
+          orders={heldOrders}
+          busy={pending}
+          onClose={() => setShowHeld(false)}
+          onResume={resume}
+          onDelete={removeHeld}
+        />
+      ) : null}
     </div>
   );
 }

@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { customerSchema } from "@/lib/validations/customer";
-import { searchCustomers, type CustomerView } from "@/lib/queries/customers";
+import {
+  searchCustomers,
+  type CustomerView,
+  type CustomerMatch,
+} from "@/lib/queries/customers";
 import { isLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import type { ActionResult } from "@/types/order";
 
@@ -13,7 +17,7 @@ function safeLocale(v: unknown): Locale {
 
 export async function searchCustomersAction(
   query: string,
-): Promise<CustomerView[]> {
+): Promise<CustomerMatch[]> {
   return searchCustomers(query);
 }
 

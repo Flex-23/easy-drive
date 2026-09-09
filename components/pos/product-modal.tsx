@@ -149,8 +149,8 @@ export function ProductModal({
     >
       <div className="flex flex-col gap-4">
         {item.groups.map((g) => {
-          const isPriceGroup =
-            g.selectionType === "SINGLE" && g.choices.some((c) => c.priceDelta !== 0);
+          // A size is a price, not a surcharge: show what that size costs.
+          const isPriceGroup = g.kind === "SIZE";
           const open = !collapsed[g.id];
           return (
             <fieldset key={g.id}>

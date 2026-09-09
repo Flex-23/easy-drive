@@ -5,14 +5,23 @@ import { onlineOrderSchema } from "@/lib/validations/menu";
 import { buildOrderData, nextOrderNumber, decimalFromCents } from "@/lib/orders";
 import { getSettings } from "@/lib/queries/settings";
 import { locales, defaultLocale } from "@/lib/i18n/config";
+import { env } from "@/lib/env";
 
 /**
  * POST /api/orders — ingestion path for an incoming online order.
  * Validated with the same Zod discipline as the POS; every price is recomputed
  * server-side. The order lands as source=ONLINE, status=PENDING and appears on
- * the Online Orders screen.
+ * the orders board.
+ *
+ * A shop-local machine has no way in from outside, so the endpoint is open until
+ * ORDER_API_KEY is set in .env — from then on every request must present it as
+ * `X-Api-Key`. Set it before exposing the port to anything but localhost.
  */
 export async function POST(request: Request) {
+  if (env.ORDER_API_KEY && request.headers.get("x-api-key") !== env.ORDER_API_KEY) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -118,7 +127,8 @@ export async function POST(request: Request) {
       });
     });
 
-    for (const l of locales) revalidatePath(`/${l}/online-orders`);
+    // An incoming order lands on the orders board as a pending delivery.
+    for (const l of locales) revalidatePath(`/${l}/drivers`);
     return NextResponse.json(
       { ok: true, orderNumber: order.orderNumber, id: order.id },
       { status: 201 },

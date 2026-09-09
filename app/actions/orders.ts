@@ -5,14 +5,15 @@ import { db } from "@/lib/db";
 import { buildOrderData, nextOrderNumber, decimalFromCents } from "@/lib/orders";
 import { getSettings } from "@/lib/queries/settings";
 import { getOrderForResume } from "@/lib/queries/orders";
+import { getOrderForTicket, type DriverOrder } from "@/lib/queries/drivers";
+import { getCustomer } from "@/lib/queries/customers";
 import { getCurrentCashier } from "@/lib/session";
-import { holdOrderSchema, payOrderSchema } from "@/lib/validations/order";
-import { computeChange, centsToEuros } from "@/lib/pricing";
+import { holdOrderSchema } from "@/lib/validations/order";
 import { isLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
-import type { ActionResult, ReceiptData } from "@/types/order";
+import type { ActionResult } from "@/types/order";
 
 function revalidateAll(locale: Locale) {
-  for (const p of ["", "/dashboard", "/daily-report", "/drivers"]) {
+  for (const p of ["", "/daily-report", "/drivers"]) {
     revalidatePath(`/${locale}${p}`);
   }
 }
@@ -79,11 +80,11 @@ export async function holdOrder(
 }
 
 // ---------------------------------------------------------------------------
-// Create a pending kitchen order (no payment yet).
+// Send the finished cart to the orders board — payment happens there.
 // ---------------------------------------------------------------------------
 export async function createOrder(
   raw: unknown,
-): Promise<ActionResult<{ id: number }>> {
+): Promise<ActionResult<{ id: number; ticket: DriverOrder | null }>> {
   const locale = safeLocale((raw as { locale?: string })?.locale);
   const parsed = holdOrderSchema.safeParse(raw);
   if (!parsed.success) return fieldErrorsFrom(parsed.error);
@@ -125,179 +126,56 @@ export async function createOrder(
       });
     });
     revalidateAll(locale);
-    return { ok: true, data: { id: order.id } };
+    // The till prints the customer copy and the kitchen bon straight away, so
+    // the finished order travels back with the answer.
+    const ticket = await getOrderForTicket(order.id);
+    return { ok: true, data: { id: order.id, ticket } };
   } catch {
     return { ok: false, error: "genericError" };
   }
 }
 
-// ---------------------------------------------------------------------------
-// Pay & finalize — writes the order transactionally, returns a receipt.
-// ---------------------------------------------------------------------------
-export async function payOrder(
-  raw: unknown,
-): Promise<ActionResult<ReceiptData>> {
-  const locale = safeLocale((raw as { locale?: string })?.locale);
-  const resumeId = (raw as { resumeOrderId?: number })?.resumeOrderId;
-  const parsed = payOrderSchema.safeParse(raw);
-  if (!parsed.success) return fieldErrorsFrom(parsed.error);
-  const cashier = await getCurrentCashier();
-  if (!cashier) return { ok: false, error: "genericError" };
-
-  const settings = await getSettings();
-  const deliveryCents =
-    parsed.data.type === "DELIVERY" ? Math.round(settings.deliveryFee * 100) : 0;
-  const built = await buildOrderData(
-    parsed.data.lines,
-    parsed.data.discountCents,
-    deliveryCents,
-    settings.taxRate,
-    locale,
-  );
-  if (!built.ok) return { ok: false, error: built.error };
-
-  // Cash sufficiency is validated after the server computes the real total.
-  if (parsed.data.paymentMethod === "CASH") {
-    const tendered = parsed.data.cashTenderedCents ?? 0;
-    if (tendered < built.totals.total) {
-      return {
-        ok: false,
-        error: "cashInsufficient",
-        fieldErrors: { cashTendered: "cashInsufficient" },
-      };
-    }
-  }
-
-  const now = new Date();
-  try {
-    const order = await db.$transaction(async (tx) => {
-      if (resumeId) {
-        await tx.order.deleteMany({ where: { id: resumeId, status: "HELD" } });
-      }
-      const orderNumber = await nextOrderNumber(tx, now);
-      return tx.order.create({
-        data: {
-          orderNumber,
-          type: parsed.data.type,
-          // Paid delivery orders await a driver on the dispatch board;
-          // everything else is finished at the counter.
-          status: parsed.data.type === "DELIVERY" ? "PREPARING" : "COMPLETED",
-          source: "POS",
-          customerId: parsed.data.customerId ?? null,
-          addressId: parsed.data.addressId ?? null,
-          tableNumber: parsed.data.tableNumber ?? null,
-          subtotal: decimalFromCents(built.totals.subtotal),
-          discountAmount: decimalFromCents(built.totals.discountAmount),
-          deliveryFee: decimalFromCents(built.totals.deliveryFee),
-          taxAmount: decimalFromCents(built.totals.taxAmount),
-          total: decimalFromCents(built.totals.total),
-          paymentMethod: parsed.data.paymentMethod,
-          paidAt: now,
-          cashierId: cashier.id,
-          createdAt: now,
-          lines: { create: built.linesCreate },
-        },
-        include: { lines: { include: { options: true } } },
-      });
-    });
-
-    revalidateAll(locale);
-
-    const tenderedCents =
-      parsed.data.paymentMethod === "CASH"
-        ? parsed.data.cashTenderedCents ?? 0
-        : null;
-    const receipt: ReceiptData = {
-      orderNumber: order.orderNumber,
-      createdAt: order.createdAt.toISOString(),
-      type: order.type,
-      tableNumber: order.tableNumber,
-      customerName: null,
-      cashierName: cashier.name,
-      lines: order.lines.map((l) => ({
-        name: l.itemNameSnapshot,
-        quantity: l.quantity,
-        unitPrice: Number(l.unitPrice.toString()),
-        lineTotal: Number(l.lineTotal.toString()),
-        options: l.options.map((o) => o.choiceNameSnapshot),
-      })),
-      subtotal: centsToEuros(built.totals.subtotal),
-      discount: centsToEuros(built.totals.discountAmount),
-      deliveryFee: centsToEuros(built.totals.deliveryFee),
-      tax: centsToEuros(built.totals.taxAmount),
-      total: centsToEuros(built.totals.total),
-      paymentMethod: parsed.data.paymentMethod,
-      cashTendered: tenderedCents === null ? null : centsToEuros(tenderedCents),
-      change:
-        tenderedCents === null
-          ? null
-          : centsToEuros(computeChange(built.totals.total, tenderedCents)),
-      restaurantName: settings.restaurantName,
-      receiptHeader: settings.receiptHeader,
-      receiptFooter: settings.receiptFooter,
-    };
-    return { ok: true, data: receipt };
-  } catch {
-    return { ok: false, error: "genericError" };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Status transitions
-// ---------------------------------------------------------------------------
-export async function cancelOrder(
-  id: number,
-  localeRaw: string,
-): Promise<ActionResult<{ id: number }>> {
-  const locale = safeLocale(localeRaw);
-  try {
-    await db.order.update({ where: { id }, data: { status: "CANCELLED" } });
-    revalidateAll(locale);
-    return { ok: true, data: { id } };
-  } catch {
-    return { ok: false, error: "genericError" };
-  }
-}
-
-export async function acceptOnlineOrder(
-  id: number,
-  localeRaw: string,
-): Promise<ActionResult<{ id: number }>> {
-  const locale = safeLocale(localeRaw);
-  try {
-    await db.order.update({
-      where: { id, source: "ONLINE" },
-      data: { status: "PREPARING" },
-    });
-    revalidateAll(locale);
-    return { ok: true, data: { id } };
-  } catch {
-    return { ok: false, error: "genericError" };
-  }
-}
-
-export async function rejectOnlineOrder(
-  id: number,
-  localeRaw: string,
-): Promise<ActionResult<{ id: number }>> {
-  const locale = safeLocale(localeRaw);
-  try {
-    await db.order.update({
-      where: { id, source: "ONLINE" },
-      data: { status: "CANCELLED" },
-    });
-    revalidateAll(locale);
-    return { ok: true, data: { id } };
-  } catch {
-    return { ok: false, error: "genericError" };
-  }
-}
-
+/**
+ * Load a parked bill back into the cart. The customer travels with it, so the
+ * cashier does not have to look them up again.
+ *
+ * Recalling it also unparks it: the bill lives in the cart from here on, and
+ * saving or re-parking writes a fresh row. The list therefore only ever shows
+ * bills that are genuinely still waiting.
+ */
 export async function resumeOrder(id: number, localeRaw: string) {
   const locale = safeLocale(localeRaw);
+  const cashier = await getCurrentCashier();
+  if (!cashier) return { ok: false as const, error: "genericError" };
+
   const data = await getOrderForResume(id, locale);
   if (!data) return { ok: false as const, error: "genericError" };
-  return { ok: true as const, data };
+
+  const removed = await db.order.deleteMany({ where: { id, status: "HELD" } });
+  // Someone else already took this bill off the board.
+  if (removed.count === 0) return { ok: false as const, error: "genericError" };
+
+  const customer = data.customerId ? await getCustomer(data.customerId) : null;
+  revalidateAll(locale);
+  return { ok: true as const, data: { ...data, customer } };
+}
+
+/** Throw a parked bill away without ringing it up. */
+export async function deleteHeldOrder(
+  id: number,
+  localeRaw: string,
+): Promise<ActionResult<{ id: number }>> {
+  const locale = safeLocale(localeRaw);
+  const cashier = await getCurrentCashier();
+  if (!cashier) return { ok: false, error: "genericError" };
+  try {
+    const res = await db.order.deleteMany({ where: { id, status: "HELD" } });
+    if (res.count === 0) return { ok: false, error: "genericError" };
+    revalidateAll(locale);
+    return { ok: true, data: { id } };
+  } catch {
+    return { ok: false, error: "genericError" };
+  }
 }
 
 // ---------------------------------------------------------------------------

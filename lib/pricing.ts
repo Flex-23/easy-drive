@@ -86,9 +86,3 @@ export function computeOrderTotals(input: OrderTotalsInput): OrderTotals {
 
   return { subtotal, discountAmount, deliveryFee, taxAmount, total, lines };
 }
-
-/** Change owed when a cash amount is tendered against a total (all cents). */
-export function computeChange(total: Cents, tendered: Cents): Cents {
-  const change = tendered - total;
-  return change < 0 ? 0 : change;
-}

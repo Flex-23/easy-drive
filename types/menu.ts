@@ -11,6 +11,8 @@ export interface ChoiceView {
 export interface GroupView {
   id: number;
   name: string;
+  /** SIZE is the dish's own size list — its choices are priced absolutely. */
+  kind: "SIZE" | "EXTRA";
   selectionType: "SINGLE" | "MULTIPLE";
   isRequired: boolean;
   isCollapsible: boolean;
