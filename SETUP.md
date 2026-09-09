@@ -63,13 +63,21 @@ The database is no longer on the shop's own machine, and two things follow.
 
 **The till needs the internet.** No connection means no orders and no printing.
 
-**Distance is measured in seconds, not milliseconds.** With the project in Seoul
-(`ap-northeast-2`) while the shop is in Germany, one query costs ~305 ms and the
-New Order screen took **6.2 s** to render; the orders board 0.8 s and the daily
-report 2.2 s. The same code against a database on the same machine is instant.
-A project in Frankfurt puts every one of those numbers back under a fifth of a
-second. If the till feels slow, the region is the first thing to check — not the
-code.
+**Distance is measured in seconds, not milliseconds.** The project lives in
+Frankfurt (`eu-central-1`), a TCP handshake away from the shop at ~83 ms and a
+query at ~80 ms. The same project in Seoul was measured at 820 ms and 305 ms,
+and it showed on every screen:
+
+| Screen (production build) | Frankfurt | Seoul |
+| --- | --- | --- |
+| New Order | 2.0 s | 6.2 s |
+| Orders board | 0.32 s | 0.8 s |
+| Daily report | 0.60 s | 2.2 s |
+| Panel · Menu | 1.9 s | 6.7 s |
+| Panel · Sales | 0.43 s | 3.6 s |
+
+If the till feels slow, check the region before reading any code. And run the
+production build — `npm run build && npm start`, not `npm run dev`.
 
 ## 5. Run
 

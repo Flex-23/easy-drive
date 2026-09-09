@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "//postinstall": "Hosts like Vercel cache node_modules, so Prisma's own postinstall never runs on a rebuild and the client is stale or missing. Generating here runs on every install.",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

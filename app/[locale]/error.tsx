@@ -1,14 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import ar from "@/lib/i18n/dictionaries/ar.json";
 import de from "@/lib/i18n/dictionaries/de.json";
 
-export default function Error({ reset }: { error: Error; reset: () => void }) {
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   const pathname = usePathname();
   const locale = pathname.startsWith("/de") ? "de" : "ar";
   const dict = locale === "de" ? de : ar;
+
+  // The cashier is shown a sentence, not a stack trace — but something has to
+  // keep the cause, or a fault at the till is undiagnosable after the fact.
+  useEffect(() => {
+    console.error("[easy-drive]", error.digest ?? "", error);
+  }, [error]);
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
