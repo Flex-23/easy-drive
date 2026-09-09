@@ -25,8 +25,20 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRIPT = path.join(HERE, "print-raw.ps1");
 
-/** How often to ask for work when the queue was empty. */
-const IDLE_POLL_MS = 3000;
+/**
+ * How often to ask for work — the dial between how fast paper appears and how
+ * many requests the app is asked to answer. A ticket waits half of this on
+ * average, so during service it is kept short; after a few quiet minutes the
+ * agent slows down, because a closed shop need not be asked every second
+ * whether anything has been ordered.
+ *
+ * Lower BUSY_POLL_MS for faster paper — at 800 ms a service hour costs 4,500
+ * requests, at 300 ms it costs 12,000. Free hosting plans count those.
+ */
+const BUSY_POLL_MS = 800;
+const IDLE_POLL_MS = 4000;
+/** How long after the last ticket the agent keeps checking quickly. */
+const BUSY_FOR_MS = 3 * 60 * 1000;
 /** How long to wait after a failed print before asking again. */
 const RETRY_PAUSE_MS = 15_000;
 /** How long to wait when the app itself cannot be reached. */
@@ -51,7 +63,9 @@ async function loadConfig() {
 
   let config;
   try {
-    config = JSON.parse(raw);
+    // Notepad and PowerShell both save UTF-8 with a byte-order mark, and this
+    // file is meant to be edited by hand on Windows.
+    config = JSON.parse(raw.replace(/^﻿/, ""));
   } catch (e) {
     console.error(`\nconfig.json is not valid JSON: ${e.message}\n`);
     process.exit(1);
@@ -147,18 +161,23 @@ async function main() {
   log(`print agent started — asking ${config.appUrl} for jobs`);
 
   let quiet = false; // so a long outage does not fill the log with one message
+  let lastJobAt = Date.now(); // start responsive: someone just launched this
   for (;;) {
     try {
       const job = await talk(config, { action: "claim" });
       quiet = false;
 
       if (!job) {
-        await sleep(IDLE_POLL_MS);
+        const busy = Date.now() - lastJobAt < BUSY_FOR_MS;
+        await sleep(busy ? BUSY_POLL_MS : IDLE_POLL_MS);
         continue;
       }
+      lastJobAt = Date.now();
 
       const size = Buffer.from(job.payload, "base64").length;
-      log(`printing #${job.id} — ${job.label} (${size} bytes → ${job.printerName})`);
+      const waited = job.waitedMs === undefined ? "" : `, waited ${job.waitedMs} ms`;
+      log(`printing #${job.id} — ${job.label} (${size} bytes → ${job.printerName}${waited})`);
+      const started = Date.now();
       const result = await print(job);
 
       await talk(config, {
@@ -169,7 +188,7 @@ async function main() {
       });
 
       if (result.ok) {
-        log(`done #${job.id}`);
+        log(`done #${job.id} in ${Date.now() - started} ms`);
       } else {
         log(`failed #${job.id} (try ${job.attempt}/${job.maxAttempts}): ${result.message}`);
         await sleep(RETRY_PAUSE_MS);

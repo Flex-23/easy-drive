@@ -86,10 +86,11 @@ export async function printOrderTicket(
   kind: TicketKind,
 ): Promise<PrintOutcome> {
   if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
-  const order = await getOrderForTicket(orderId);
+  // Fetched together: the database is a network hop away, and the settings do
+  // not depend on the order.
+  const [order, ctx] = await Promise.all([getOrderForTicket(orderId), context()]);
   if (!order) return { ok: false, error: "genericError" };
 
-  const ctx = await context();
   const build =
     kind === "kitchen" ? kitchenTicket : kind === "label" ? addressLabel : customerReceipt;
   const name =
@@ -103,10 +104,11 @@ export async function printOrderTicket(
  */
 export async function printNewOrder(orderId: number): Promise<PrintOutcome> {
   if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
-  const order = await getOrderForTicket(orderId);
+  const [order, ctx] = await Promise.all([getOrderForTicket(orderId), context()]);
   if (!order) return { ok: false, error: "genericError" };
 
-  const ctx = await context();
+  // Queued one after the other, not together: the agent prints in id order, and
+  // the customer's copy has to come off the printer before the kitchen's.
   const receipt = await send(
     customerReceipt(order, ctx),
     ctx.printerName,

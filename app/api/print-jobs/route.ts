@@ -75,31 +75,51 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: false, error: "unknown_action" }, { status: 400 });
 }
 
+interface ClaimedRow {
+  id: number;
+  label: string;
+  printerName: string;
+  attempts: number;
+  payload: Uint8Array;
+  createdAt: Date;
+}
+
 /**
- * Hand out the oldest waiting job. The claim is a conditional update, so two
- * agents started by mistake can never print the same ticket twice.
+ * Hand out the oldest waiting job — find it, take it and return it in a single
+ * statement. `FOR UPDATE SKIP LOCKED` is what makes that safe: a second agent
+ * asking at the same moment steps over the locked row instead of waiting for
+ * it, so one ticket can never be printed twice and neither agent blocks.
+ *
+ * This is asked for once a second while the shop is open, and the agent waits
+ * on the answer before any paper moves, so it is worth one round trip and not
+ * two.
  */
 async function claim() {
-  const candidate = await db.printJob.findFirst({
-    where: { status: "QUEUED", attempts: { lt: MAX_ATTEMPTS } },
-    orderBy: { id: "asc" },
-  });
-  if (!candidate) return new NextResponse(null, { status: 204 });
+  const rows = await db.$queryRaw<ClaimedRow[]>`
+    UPDATE "PrintJob"
+       SET status = 'PRINTING', attempts = attempts + 1, "updatedAt" = now()
+     WHERE id = (
+       SELECT id FROM "PrintJob"
+        WHERE status = 'QUEUED' AND attempts < ${MAX_ATTEMPTS}
+        ORDER BY id
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+     )
+    RETURNING id, label, "printerName", attempts, payload, "createdAt"`;
 
-  const taken = await db.printJob.updateMany({
-    where: { id: candidate.id, status: "QUEUED" },
-    data: { status: "PRINTING", attempts: { increment: 1 } },
-  });
-  // Another agent got there first; it will be offered again on the next poll.
-  if (taken.count !== 1) return new NextResponse(null, { status: 204 });
+  const job = rows[0];
+  if (!job) return new NextResponse(null, { status: 204 });
 
   return NextResponse.json({
-    id: candidate.id,
-    label: candidate.label,
-    printerName: candidate.printerName,
-    attempt: candidate.attempts + 1,
+    id: job.id,
+    label: job.label,
+    printerName: job.printerName,
+    attempt: job.attempts,
     maxAttempts: MAX_ATTEMPTS,
-    payload: Buffer.from(candidate.payload).toString("base64"),
+    /** How long this job sat waiting — the agent logs it, so a slow print can
+     *  be blamed on the right half of the chain. */
+    waitedMs: Date.now() - new Date(job.createdAt).getTime(),
+    payload: Buffer.from(job.payload).toString("base64"),
   });
 }
 

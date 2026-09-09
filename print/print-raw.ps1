@@ -6,7 +6,11 @@
     The spooler API is reached through P/Invoke so the app needs no native
     module and no third-party print service.
 
-    Usage: print-raw.ps1 -Printer "XP-80C" -File "C:\...\ticket.bin"
+    The P/Invoke wrapper is compiled once and cached beside this script: building
+    it from source costs about a second, and it is otherwise rebuilt for every
+    single receipt. Delete the .dll to force a rebuild.
+
+    Usage: print-raw.ps1 -Printer "XP-80C" -File "<path to the job's bytes>"
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Printer,
@@ -15,7 +19,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Add-Type -TypeDefinition @'
+$cache = Join-Path $env:TEMP "easy-drive-rawprinter.dll"
+$source = @'
 using System;
 using System.Runtime.InteropServices;
 
@@ -84,6 +89,21 @@ public class EasyDriveRawPrinter
     }
 }
 '@
+
+if (Test-Path $cache) {
+    try {
+        Add-Type -Path $cache
+    }
+    catch {
+        # A truncated or stale cache is worth nothing; rebuild it.
+        Remove-Item $cache -Force -ErrorAction SilentlyContinue
+    }
+}
+
+if (-not ("EasyDriveRawPrinter" -as [type])) {
+    Add-Type -TypeDefinition $source -OutputAssembly $cache -PassThru | Out-Null
+    Add-Type -Path $cache
+}
 
 $bytes = [System.IO.File]::ReadAllBytes($File)
 [EasyDriveRawPrinter]::Send($Printer, $bytes)
