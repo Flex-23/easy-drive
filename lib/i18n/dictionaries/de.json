@@ -422,6 +422,6 @@
     "backHome": "Zurück zur Startseite",
     "printerNotConfigured": "Kein Drucker gewählt — bitte in den Einstellungen wählen",
     "printerFailed": "Druck konnte nicht gesendet werden",
-    "printerUnsupportedPlatform": "Direktdruck wird nur unter Windows unterstützt"
+    "printerUnsupportedPlatform": "Drucken geht nur am Shop-Rechner — diese Seite läuft in der Cloud"
   }
 }

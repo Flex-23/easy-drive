@@ -422,6 +422,6 @@
     "backHome": "العودة للرئيسية",
     "printerNotConfigured": "لم تُختَر طابعة — اخترها من الإعدادات",
     "printerFailed": "تعذّر الإرسال إلى الطابعة",
-    "printerUnsupportedPlatform": "الطباعة المباشرة مدعومة على ويندوز فقط"
+    "printerUnsupportedPlatform": "الطباعة تعمل من حاسبة المطعم فقط — هذه النسخة تعمل على السحابة"
   }
 }
