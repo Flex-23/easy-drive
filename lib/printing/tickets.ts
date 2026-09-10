@@ -1,5 +1,5 @@
 import "server-only";
-import { Receipt } from "./escpos";
+import { Slip, type WidthMm } from "./lines";
 import { formatMoney, formatDate, formatDateTime, formatTime } from "../money";
 import { getDictionary } from "../i18n/dictionaries";
 import { posLocale } from "../i18n/config";
@@ -8,7 +8,8 @@ import type { DailyReport } from "../queries/orders";
 import type { OrderType } from "@prisma/client";
 
 /**
- * Every piece of paper the shop produces, written as printer bytes.
+ * Every piece of paper the shop produces, written as directive lines (see
+ * `lines.ts`) for the renderer to draw.
  *
  * The till serves customers in German, so the dictionary is fixed here — these
  * are printed by the machine, not by whoever happens to be looking at a screen.
@@ -20,9 +21,16 @@ const typeLabel = (type: OrderType) =>
   type === "DELIVERY" ? dict.orderType.delivery : dict.orderType.pickup;
 
 export interface TicketContext {
-  columns: number;
+  widthMm: WidthMm;
   restaurantName: string;
 }
+
+/**
+ * A line that belongs to the one above it — an option, a note. The old ESC/POS
+ * slips indented these with spaces; a proportional font all but swallows a
+ * leading space, so they are marked instead.
+ */
+const SUB = "· ";
 
 /* ------------------------------ order tickets ----------------------------- */
 
@@ -30,48 +38,43 @@ export interface TicketContext {
  * The customer's copy. It deliberately carries no shop or software name — only
  * the order — and says plainly that it is not an official receipt.
  */
-export function customerReceipt(order: DriverOrder, ctx: TicketContext): Buffer {
-  const r = new Receipt(ctx.columns);
+export function customerReceipt(order: DriverOrder, ctx: TicketContext): string[] {
+  const r = new Slip(ctx.widthMm);
   // A pickup has no delivery address, but the customer still has one on file —
   // and that is what the receipt and its QR are for.
   const address = order.address ?? order.customerAddress;
 
   // 1 — what it is and when.
-  r.align("center").bold(true).big(true, true).line(order.orderNumber);
-  r.big(false).bold(false);
-  r.line(formatDateTime(order.createdAt, posLocale));
-  r.line();
+  r.hero(order.orderNumber);
+  r.centre(formatDateTime(order.createdAt, posLocale));
+  r.blank();
 
   // 2 — who it is for, and where they are.
-  r.align("left");
-  if (order.customerName) r.bold(true).line(order.customerName).bold(false);
-  if (address) r.line(address);
-  if (order.customerPhone) r.line(order.customerPhone);
+  if (order.customerName) r.strong(order.customerName);
+  if (address) r.text(address);
+  if (order.customerPhone) r.text(order.customerPhone);
 
   // 3 — that address as a QR: scanning it opens navigation.
-  if (address) {
-    r.align("center").qr(mapsLink(address)).align("left");
-  }
+  if (address) r.qr(mapsLink(address));
 
   // 4 — what was ordered.
   r.rule();
   for (const line of order.lines) {
-    r.row(`${line.quantity}x ${line.name}`, money(line.lineTotal));
-    if (line.options.length > 0) r.line(`   ${line.options.join(", ")}`);
+    r.row(`${line.quantity} × ${line.name}`, money(line.lineTotal));
+    if (line.options.length > 0) r.text(`${SUB}${line.options.join(", ")}`);
   }
 
   // 5 — what it costs.
   r.rule();
   r.row(dict.cart.subtotal, money(order.subtotal));
-  if (order.discount > 0) r.row(dict.cart.discount, `- ${money(order.discount)}`);
+  if (order.discount > 0) r.row(dict.cart.discount, `− ${money(order.discount)}`);
   if (order.deliveryFee > 0) r.row(dict.cart.deliveryFee, money(order.deliveryFee));
   r.row(dict.cart.tax, money(order.tax));
-  r.bold(true).big(true, false).row(dict.cart.total, money(order.total));
-  r.big(false).bold(false);
+  r.strongRow(dict.cart.total, money(order.total));
 
   r.rule();
-  r.align("center").bold(true).line(dict.tickets.unofficial).bold(false);
-  return r.cut().build();
+  r.centre(dict.tickets.unofficial);
+  return r.build();
 }
 
 const mapsLink = (address: string) =>
@@ -92,44 +95,45 @@ function daySequence(orderNumber: string): string {
 /**
  * What to cook. The day's sequence number leads — that is what gets called out
  * when the food is ready — with the full order number under it, and no money
- * anywhere on the paper.
+ * anywhere on the paper. The item list is fenced with the dashed rule so the bon
+ * is recognisable at a glance on a spike of tickets.
  */
-export function kitchenTicket(order: DriverOrder, ctx: TicketContext): Buffer {
-  const r = new Receipt(ctx.columns);
+export function kitchenTicket(order: DriverOrder, ctx: TicketContext): string[] {
+  const r = new Slip(ctx.widthMm);
 
-  r.align("center").bold(true).big(true, true).line(daySequence(order.orderNumber));
-  r.big(false).line(order.orderNumber).bold(false);
-  r.line(`${typeLabel(order.type)} - ${formatTime(order.createdAt, posLocale)}`);
-  r.align("left").rule();
+  r.hero(daySequence(order.orderNumber));
+  r.centre(order.orderNumber);
+  r.text(`${typeLabel(order.type)} - ${formatTime(order.createdAt, posLocale)}`);
+  r.fence();
 
   for (const line of order.lines) {
-    r.bold(true).big(true).line(`${line.quantity}x ${line.name}`).big(false).bold(false);
-    if (line.options.length > 0) r.line(`   ${line.options.join(", ")}`);
-    if (line.kitchenNotes) r.bold(true).line(`   ! ${line.kitchenNotes}`).bold(false);
-    r.line();
+    r.strong(`${line.name} [${line.quantity}]`);
+    if (line.options.length > 0) r.strong(`${SUB}${line.options.join(", ")}`);
+    if (line.kitchenNotes) r.strong(`${SUB}! ${line.kitchenNotes}`);
   }
 
-  return r.cut().build();
+  r.fence();
+  return r.build();
 }
 
 /** Who and where, with the address repeated as a QR the driver can scan. */
-export function addressLabel(order: DriverOrder, ctx: TicketContext): Buffer {
-  const r = new Receipt(ctx.columns);
+export function addressLabel(order: DriverOrder, ctx: TicketContext): string[] {
+  const r = new Slip(ctx.widthMm);
   const address = order.address ?? order.customerAddress;
   const encoded = address
     ? mapsLink(address)
     : [order.orderNumber, order.customerName, order.customerPhone].filter(Boolean).join(" | ");
 
-  r.align("center").bold(true).big(true).line(order.orderNumber).big(false).bold(false);
-  r.line(typeLabel(order.type));
-  r.align("left").rule();
+  r.hero(order.orderNumber);
+  r.centre(typeLabel(order.type));
+  r.rule();
 
-  r.bold(true).line(order.customerName ?? dict.customer.noCustomer).bold(false);
-  if (order.customerPhone) r.line(order.customerPhone);
-  if (address) r.line(address);
+  r.strong(order.customerName ?? dict.customer.noCustomer);
+  if (order.customerPhone) r.text(order.customerPhone);
+  if (address) r.text(address);
 
-  r.align("center").qr(encoded).align("left");
-  return r.cut().build();
+  r.qr(encoded);
+  return r.build();
 }
 
 /* --------------------------------- reports -------------------------------- */
@@ -139,33 +143,33 @@ export function addressLabel(order: DriverOrder, ctx: TicketContext): Buffer {
  * voided, and the money. Nothing about who ordered what — that detail lives on
  * the screen and on the orders-board report.
  */
-export function dailyReportTicket(report: DailyReport, ctx: TicketContext): Buffer {
-  const r = new Receipt(ctx.columns);
+export function dailyReportTicket(report: DailyReport, ctx: TicketContext): string[] {
+  const r = new Slip(ctx.widthMm);
   const t = dict.dailyReport;
   const cash = report.byMethod.find((m) => m.method === "CASH");
   const online = report.byMethod.find((m) => m.method === "ONLINE");
 
-  r.align("center").bold(true).line(ctx.restaurantName).line(t.printTitle).bold(false);
-  r.line();
-  r.line(formatDate(report.date, posLocale));
-  r.align("left").rule();
-  r.line();
+  r.centre(ctx.restaurantName);
+  r.centre(t.printTitle);
+  r.blank();
+  r.centre(formatDate(report.date, posLocale));
+  r.rule();
+  r.blank();
 
   r.row(t.totalOrders, String(report.totalOrders));
-  r.line();
+  r.blank();
   r.row(`${dict.payment.cash} (${cash?.count ?? 0})`, money(cash?.total ?? 0));
   r.row(`${dict.payment.online} (${online?.count ?? 0})`, money(online?.total ?? 0));
   r.row(t.cancelledOrders, String(report.cancelled.count));
-  r.line();
+  r.blank();
 
   r.rule();
-  r.bold(true).big(true, false).row(t.totalRevenue, money(report.totalRevenue));
-  r.big(false).bold(false);
+  r.strongRow(t.totalRevenue, money(report.totalRevenue));
 
-  r.line();
+  r.blank();
   r.rule();
-  r.align("center").line(`${t.printedAt}: ${formatDateTime(new Date(), posLocale)}`);
-  return r.cut().build();
+  r.centre(`${t.printedAt}: ${formatDateTime(new Date(), posLocale)}`);
+  return r.build();
 }
 
 /** The waiting column: every order still to be handled, with the total. */
@@ -173,32 +177,33 @@ export function pendingReportTicket(
   orders: DriverOrder[],
   total: number,
   ctx: TicketContext,
-): Buffer {
-  const r = new Receipt(ctx.columns);
+): string[] {
+  const r = new Slip(ctx.widthMm);
   const t = dict.drivers;
 
-  r.align("center").bold(true).line(ctx.restaurantName).line(t.printPendingTitle).bold(false);
-  r.line(formatDate(new Date(), posLocale));
-  r.align("left").rule();
+  r.centre(ctx.restaurantName);
+  r.centre(t.printPendingTitle);
+  r.centre(formatDate(new Date(), posLocale));
+  r.rule();
 
   if (orders.length === 0) {
-    r.line(t.noPending);
+    r.text(t.noPending);
   } else {
     for (const o of orders) {
       r.row(
         `${o.orderNumber} ${formatTime(o.createdAt, posLocale)}`,
         money(o.total),
       );
-      if (o.customerName) r.line(`   ${o.customerName}`);
+      if (o.customerName) r.text(`${SUB}${o.customerName}`);
     }
   }
 
   r.rule();
   r.row(t.count, String(orders.length));
-  r.bold(true).row(t.grandTotal, money(total)).bold(false);
+  r.strongRow(t.grandTotal, money(total));
   r.rule();
-  r.align("center").line(`${dict.dailyReport.printedAt}: ${formatDateTime(new Date(), posLocale)}`);
-  return r.cut().build();
+  r.centre(`${dict.dailyReport.printedAt}: ${formatDateTime(new Date(), posLocale)}`);
+  return r.build();
 }
 
 export interface ReportGroup {
@@ -215,20 +220,21 @@ export function processedReportTicket(
   title: string,
   ctx: TicketContext,
   detailed: boolean,
-): Buffer {
-  const r = new Receipt(ctx.columns);
+): string[] {
+  const r = new Slip(ctx.widthMm);
   const t = dict.drivers;
 
-  r.align("center").bold(true).line(ctx.restaurantName).line(title).bold(false);
-  r.line(formatDate(new Date(), posLocale));
-  r.align("left").rule();
+  r.centre(ctx.restaurantName);
+  r.centre(title);
+  r.centre(formatDate(new Date(), posLocale));
+  r.rule();
 
   const counted = groups.filter((g) => g.kind !== "cancelled");
   const count = counted.reduce((acc, g) => acc + g.orders.length, 0);
   const sum = counted.reduce((acc, g) => acc + g.sum, 0);
 
   if (groups.length === 0) {
-    r.line(t.noAssigned);
+    r.text(t.noAssigned);
   } else if (detailed) {
     // A single group: its orders, one per line.
     for (const o of groups[0].orders) {
@@ -236,7 +242,7 @@ export function processedReportTicket(
         `${o.orderNumber} ${formatTime(o.createdAt, posLocale)}`,
         o.cancelled ? "-" : money(o.total),
       );
-      if (o.customerName) r.line(`   ${o.customerName}`);
+      if (o.customerName) r.text(`${SUB}${o.customerName}`);
     }
   } else {
     for (const g of groups) {
@@ -246,21 +252,26 @@ export function processedReportTicket(
 
   r.rule();
   r.row(t.count, String(count));
-  r.bold(true).row(t.grandTotal, money(sum)).bold(false);
+  r.strongRow(t.grandTotal, money(sum));
   r.rule();
-  r.align("center").line(`${dict.dailyReport.printedAt}: ${formatDateTime(new Date(), posLocale)}`);
-  return r.cut().build();
+  r.centre(`${dict.dailyReport.printedAt}: ${formatDateTime(new Date(), posLocale)}`);
+  return r.build();
 }
 
 /** A short slip proving the printer is reachable and correctly configured. */
-export function testTicket(ctx: TicketContext): Buffer {
-  const r = new Receipt(ctx.columns);
-  r.align("center").bold(true).big(true).line(ctx.restaurantName).big(false).bold(false);
-  r.line(dict.settings.printTest);
-  r.line(formatDateTime(new Date(), posLocale));
-  r.align("left").rule();
-  r.row(dict.settings.printerName, ctx.restaurantName);
-  r.line("ÄÖÜ äöü ß € 0123456789");
-  r.line("X".repeat(ctx.columns));
-  return r.cut().build();
+export function testTicket(ctx: TicketContext): string[] {
+  const r = new Slip(ctx.widthMm);
+
+  r.hero(ctx.restaurantName);
+  r.centre(dict.settings.printTest);
+  r.centre(formatDateTime(new Date(), posLocale));
+  r.rule();
+  r.row(dict.settings.printerColumns, `${ctx.widthMm} mm`);
+  // Umlauts, the euro sign and Arabic on one line: the point of the slip is to
+  // show that the renderer draws all three, which the old code page could not.
+  r.text("ÄÖÜ äöü ß € 0123456789");
+  r.text("مرحبا — اختبار الطباعة");
+  r.rule();
+  r.centre(dict.settings.printTestDone);
+  return r.build();
 }

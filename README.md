@@ -9,8 +9,9 @@ database:
   Arabic, its own sign-in, its own session.
 
 Both are Next.js App Router on PostgreSQL (Supabase) via Prisma. Receipts are
-printed as ESC/POS bytes, either straight to the shop's spooler or through the
-print agent when the app runs in the cloud.
+built on the server as directive lines and drawn on the shop's machine with
+GDI+ — directly when the app runs there, through the print agent when it runs in
+the cloud.
 
 ## Running it
 
@@ -37,7 +38,7 @@ wired, and what to do when something is wrong. Read it before deploying.
 | `lib/pricing.ts` | all money maths, in integer cents |
 | `lib/orders.ts` | building an order from the database, and its number |
 | `lib/business-day.ts` | the 05:00-to-05:00 Berlin day the shop runs on |
-| `lib/printing` | ESC/POS bytes and the two ways they reach paper |
+| `lib/printing` | the slip format, and the two ways it reaches paper |
 | `print/` | the agent that prints at the shop for a cloud-hosted app |
 
 ## Two rules worth knowing before editing

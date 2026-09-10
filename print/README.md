@@ -1,16 +1,44 @@
 # Easy Drive — print agent
 
-A server in Frankfurt cannot reach a printer in the shop. So the app renders the
-ticket where the data is, and this agent moves the finished bytes to where the
-paper is.
+A server in Frankfurt cannot reach a printer in the shop. So the app builds the
+slip where the data is, and this agent draws it where the paper is.
 
 ```
-cloud app ──renders──▶ queue ──asks over HTTPS──▶ this agent ──▶ spooler ──▶ paper
- (Vercel)            (database)                 (shop machine)
+cloud app ──builds──▶ queue ──asks over HTTPS──▶ this agent ──▶ print-receipt.ps1 ──▶ paper
+ (Vercel)           (database)                 (shop machine)      (GDI+)
 ```
 
 Copy this folder anywhere on the shop's Windows machine. It needs **Node.js**
 and nothing else — no npm install, no database password, no project checkout.
+
+Two files do the work, and they must stay side by side:
+
+| | |
+| --- | --- |
+| `print-agent.mjs` | the loop — asks for a job, lays its files out, reports back |
+| `print-receipt.ps1` | draws the slip with GDI+ and prints it |
+
+The agent knows nothing about receipts. What arrives is a finished document —
+the slip's lines, its QR codes as PNG bytes, and which roll it was laid out for
+— and all the agent does is write those to a temp folder and point the renderer
+at them.
+
+The drawing is GDI+ rather than raw ESC/POS bytes. Raw bytes reach the paper
+faster, but the printer draws them from a code page, so anything the code page
+does not carry prints as `?` and the layout can only be a fixed number of
+monospaced columns. GDI+ shapes text properly — Arabic joined and right-to-left,
+`ÄÖÜ` and `€` without a code page — measures it so nothing is ever cut off, and
+can place an image. That last point is why QR codes arrive as PNGs instead of
+using the printer's own QR command: the two cannot be mixed in one job.
+
+### Checking the layout without spending a roll
+
+`print-receipt.ps1` will draw to a PNG instead of to paper, through the very
+same code, and it needs no printer attached to do it:
+
+```powershell
+powershell -File print-receipt.ps1 -Path slip.txt -WidthMm 80 -Preview out.png
+```
 
 ## Setup
 
@@ -45,9 +73,11 @@ logged on or not*.
 | | |
 | --- | --- |
 | `print-agent.mjs` | The agent. No dependencies. |
-| `print-raw.ps1` | Hands bytes to the Windows spooler as a RAW job, so the ESC/POS commands (cut, QR, emphasis) survive. Must stay beside the agent. |
+| `print-receipt.ps1` | Draws the slip with GDI+ and hands the page to the printer. Must stay beside the agent. |
 | `config.json` | Your app address and key. Not committed. |
 | `start-print.bat` | Runs the agent and restarts it if it ever stops. |
 
-The agent contains no menu, no prices and no receipt layout: the bytes reach it
-finished. That is why it never needs updating when the app changes.
+The agent contains no menu, no prices and no receipt layout: the slip reaches it
+finished. That is why it never needs updating when the app changes — but
+`print-receipt.ps1` is the layout, so if that file changes in the project, copy
+the new one over and restart the agent.

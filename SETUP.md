@@ -237,16 +237,26 @@ explicitly (DST included) rather than to the machine's clock.
 
 ## Printing
 
-The app runs on the shop's own computer, so it prints there directly: every
-ticket is built as **ESC/POS** bytes and handed to the Windows spooler as a RAW
-job through `print/print-raw.ps1`. No browser dialog, no printer driver
-rendering, no third-party print service — and nothing to install beyond the
+The app runs on the shop's own computer, so it prints there directly. Every slip
+is built on the server as **directive lines** — a tiny format where the
+formatting travels with the text (see [lib/printing/lines.ts](lib/printing/lines.ts))
+— and drawn on the shop machine by `print/print-receipt.ps1` with **GDI+**. No
+browser dialog, no third-party print service, and nothing to install beyond the
 printer itself.
 
+It used to send raw **ESC/POS** bytes to the spooler instead. Raw bytes reach the
+paper faster, but the printer draws them from a code page: anything outside
+CP858 came out as `?`, every layout was a fixed count of monospaced columns, and
+a line too long for the roll was simply cut. GDI+ shapes and measures text
+properly — Arabic joined and right-to-left, `ÄÖÜ` and `€` with no code page at
+all — moves a value onto its own line rather than truncating it, and can place an
+image.
+
 Choose the printer in **Settings → Receipt**: the list comes from Windows
-(`Get-Printer`), next to it the paper width (80 mm = 48 characters, 58 mm = 32)
-and a **Testdruck** button that prints a short slip with umlauts, € and a full-
-width rule so you can confirm both at once.
+(`Get-Printer`), next to it the paper width (80 mm or 58 mm, which sets the type
+size and margins) and a **Testdruck** button that prints a short slip carrying
+umlauts, €, digits and a line of Arabic, so one glance confirms the renderer is
+drawing all of them.
 
 | Printed | When |
 | --- | --- |
@@ -255,20 +265,34 @@ width rule so you can confirm both at once.
 | Waiting and processed reports | the printer buttons on the orders board |
 | Day-close sheet | the print button on the daily report |
 
-The QR on the address label is drawn by the printer itself (ESC/POS QR
-command), so it costs a few bytes rather than an image and stays sharp.
-Text is encoded as **CP858**, which carries ä ö ü ß and €.
+The QR on the address label and the customer copy is rendered to a PNG on the
+server and drawn into the same job as an image. It cannot use the printer's own
+QR command any more: that command is raw bytes, and raw bytes cannot be mixed
+into a page GDI+ is drawing. It is rendered at roughly the thermal head's own
+resolution and drawn nearest-neighbour, so the modules stay square and scannable.
+
+To check a layout without spending a roll, `print-receipt.ps1` will draw to a PNG
+through the very same code and needs no printer to do it:
+
+```powershell
+powershell -File print/print-receipt.ps1 -Path slip.txt -WidthMm 80 -Preview out.png
+```
 
 ### Printing from the cloud — the print agent
 
 A server in Frankfurt cannot reach a printer in the shop, so the app takes the
-other road: it renders the ticket where the data is and moves the **finished
-bytes** to where the paper is.
+other road: it builds the slip where the data is and moves the **finished
+document** to where the paper is.
 
 ```
-cloud app ──renders──▶ PrintJob ──asks over HTTPS──▶ print agent ──▶ spooler ──▶ paper
- (Vercel)             (Supabase)                    (shop machine)
+cloud app ──builds──▶ PrintJob ──asks over HTTPS──▶ print agent ──▶ print-receipt.ps1 ──▶ paper
+ (Vercel)            (Supabase)                   (shop machine)        (GDI+)
 ```
+
+The queued document is the slip's lines, its QR codes as PNG bytes and the roll
+it was laid out for, stored as JSON. The agent writes those into a temp folder
+and runs the same `print-receipt.ps1` the shop machine runs, so both paths end at
+one renderer and produce identical paper.
 
 On the shop machine nothing changes — the app still prints directly. On any
 other host `send()` writes the job into `PrintJob` instead, and the agent in

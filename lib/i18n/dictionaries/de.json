@@ -370,8 +370,8 @@
     "printTestDone": "Testdruck gesendet",
     "noPrinters": "Keine installierten Drucker gefunden",
     "refreshPrinters": "Druckerliste aktualisieren",
-    "columns48": "80 mm (48 Zeichen)",
-    "columns32": "58 mm (32 Zeichen)"
+    "columns48": "80 mm",
+    "columns32": "58 mm"
   },
   "status": {
     "DRAFT": "Entwurf",

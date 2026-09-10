@@ -3,16 +3,16 @@
  *
  * Runs on the shop's Windows machine, beside the printer. The app in the cloud
  * has no printer attached: when a ticket is printed there it is rendered on the
- * server and the finished bytes are left in a queue. This agent asks the app for
- * the next one over HTTPS and hands it to the Windows spooler.
+ * server and the finished slip is left in a queue. This agent asks the app for
+ * the next one over HTTPS and hands it to the renderer beside it.
  *
  * It is deliberately ignorant. No database, no dependencies, no menu, no prices,
- * no receipt layout — the bytes arrive complete and its whole job is to move
- * them to paper. That is why this folder can be copied anywhere on the machine
- * and why it does not change when the app does.
+ * no receipt layout — the slip arrives finished, and its whole job is to put it
+ * in front of the renderer. That is why this folder can be copied anywhere on
+ * the machine and why it does not change when the app does.
  *
- *   config.json  — the app's address and the shared key
- *   print-raw.ps1 — hands bytes to the spooler untouched (RAW), must stay beside
+ *   config.json       — the app's address and the shared key
+ *   print-receipt.ps1 — draws the slip with GDI+ and prints it, must stay beside
  *
  * Start it by double-clicking start-print.bat, or: node print-agent.mjs
  */
@@ -23,7 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.join(HERE, "print-raw.ps1");
+const SCRIPT = path.join(HERE, "print-receipt.ps1");
 
 /**
  * How often to ask for work — the dial between how fast paper appears and how
@@ -97,8 +97,8 @@ async function talk(config, body) {
   return response.json();
 }
 
-/** Hand one job's bytes to the Windows spooler, untouched. */
-function toSpooler(printerName, file) {
+/** Hand one slip to the renderer, which draws it and prints it. */
+function toSpooler(printerName, file, widthMm) {
   return new Promise((resolve) => {
     const child = spawn(
       "powershell.exe",
@@ -109,10 +109,12 @@ function toSpooler(printerName, file) {
         "Bypass",
         "-File",
         SCRIPT,
-        "-Printer",
-        printerName,
-        "-File",
+        "-Path",
         file,
+        "-WidthMm",
+        String(widthMm),
+        "-PrinterName",
+        printerName,
       ],
       { windowsHide: true },
     );
@@ -137,13 +139,38 @@ function toSpooler(printerName, file) {
   });
 }
 
+/**
+ * Put one job on paper.
+ *
+ * The payload is the finished document as JSON: the slip's lines, its QR codes
+ * as PNG bytes, and which roll it was built for. The images are written beside
+ * the lines file and each `IMG` directive is pointed at its local copy, so the
+ * PowerShell script only ever sees absolute paths on this machine and needs to
+ * know nothing about where the job came from. The directory goes away again
+ * whatever happens.
+ */
 async function print(job) {
   let dir = null;
   try {
+    const doc = JSON.parse(Buffer.from(job.payload, "base64").toString("utf8"));
     dir = await mkdtemp(path.join(tmpdir(), "easy-drive-print-"));
-    const file = path.join(dir, "job.bin");
-    await writeFile(file, Buffer.from(job.payload, "base64"));
-    return await toSpooler(job.printerName, file);
+
+    for (const image of doc.images ?? []) {
+      await writeFile(path.join(dir, image.name), Buffer.from(image.base64, "base64"));
+    }
+
+    const lines = (doc.lines ?? []).map((line) => {
+      if (!line.startsWith("IMG\t")) return line;
+      const [directive, mm, name] = line.split("\t");
+      return `${directive}\t${mm}\t${path.join(dir, name)}`;
+    });
+
+    // A BOM makes Windows tooling read the file as UTF-8 without guessing, and
+    // CRLF is what ReadAllLines expects from a file written on Windows.
+    const file = path.join(dir, "slip.txt");
+    await writeFile(file, `﻿${lines.join("\r\n")}\r\n`, "utf8");
+
+    return await toSpooler(job.printerName, file, doc.widthMm ?? 80);
   } catch (e) {
     return { ok: false, message: String(e) };
   } finally {
@@ -174,9 +201,8 @@ async function main() {
       }
       lastJobAt = Date.now();
 
-      const size = Buffer.from(job.payload, "base64").length;
       const waited = job.waitedMs === undefined ? "" : `, waited ${job.waitedMs} ms`;
-      log(`printing #${job.id} — ${job.label} (${size} bytes → ${job.printerName}${waited})`);
+      log(`printing #${job.id} — ${job.label} (→ ${job.printerName}${waited})`);
       const started = Date.now();
       const result = await print(job);
 

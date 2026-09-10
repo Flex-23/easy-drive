@@ -314,18 +314,21 @@ enum PrintJobStatus {
   FAILED
 }
 
-/// One piece of paper, already rendered, waiting to be pulled by the agent that
+/// One piece of paper, already built, waiting to be pulled by the agent that
 /// runs beside the printer. The cloud copy of the app has no printer attached,
-/// so it renders the ticket and leaves it here; `print/print-agent.mjs` on the
-/// shop machine claims it and hands the bytes to the Windows spooler.
+/// so it builds the slip and leaves it here; `print/print-agent.mjs` on the shop
+/// machine claims it and hands it to `print-receipt.ps1` to be drawn.
 ///
-/// The bytes are stored finished, not the recipe for them: the agent then needs
-/// no menu, no dictionary and no business rules — only a printer.
+/// The slip is stored finished, not the recipe for it: the agent then needs no
+/// menu, no dictionary and no business rules — only a printer.
 model PrintJob {
   id          Int            @id @default(autoincrement())
   /// What this paper is, for whoever reads the queue. Never used to build it.
   label       String
-  /// The ESC/POS job exactly as the printer should receive it.
+  /// The finished document as UTF-8 JSON: `{ lines, images, widthMm }` — the
+  /// slip's directive lines (lib/printing/lines.ts), its QR codes as PNG bytes,
+  /// and the roll it was laid out for. The column stays opaque bytes because the
+  /// queue never looks inside; only the two printing paths parse it.
   payload     Bytes
   /// The printer chosen in Settings when the job was made.
   printerName String
