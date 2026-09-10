@@ -156,6 +156,7 @@ export function OrderWorkspace({
       const { data } = res;
       const rebuilt: CartLine[] = [];
       let dropped = 0;
+      let droppedOptions = 0;
 
       data.lines.forEach((line, index) => {
         const item = line.itemId === null ? undefined : itemsById.get(line.itemId);
@@ -163,20 +164,26 @@ export function OrderWorkspace({
           dropped += 1;
           return;
         }
+        // A saved option is matched to today's menu by name, so renaming a size
+        // or an extra in the panel loses it. That quietly changes the price, so
+        // the misses are counted and the cashier is told rather than left to
+        // notice a bill that no longer adds up.
         const options: CartLineOption[] = [];
         for (const saved of line.options) {
-          for (const group of item.groups) {
-            const choice = group.choices.find((c) => c.name === saved.choiceName);
-            if (!choice) continue;
-            options.push({
-              groupId: group.id,
-              choiceId: choice.id,
-              groupName: group.name,
-              choiceName: choice.name,
-              priceDelta: choice.priceDelta,
-            });
-            break;
+          const match = item.groups
+            .flatMap((group) => group.choices.map((choice) => ({ group, choice })))
+            .find(({ choice }) => choice.name === saved.choiceName);
+          if (!match) {
+            droppedOptions += 1;
+            continue;
           }
+          options.push({
+            groupId: match.group.id,
+            choiceId: match.choice.id,
+            groupName: match.group.name,
+            choiceName: match.choice.name,
+            priceDelta: match.choice.priceDelta,
+          });
         }
         rebuilt.push({
           uid: `${item.id}-${Date.now()}-${index}`,
@@ -198,6 +205,7 @@ export function OrderWorkspace({
       // The bill left the parked list the moment it was recalled.
       router.refresh();
       if (dropped > 0) toast(dict.held.missingItems, "info");
+      else if (droppedOptions > 0) toast(dict.held.missingOptions, "info");
       else toast(dict.toast.orderResumed, "success");
     });
   }

@@ -3,13 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { customerSchema } from "@/lib/validations/customer";
+import { setDefaultAddress } from "@/lib/customers";
 import {
   searchCustomers,
   type CustomerView,
   type CustomerMatch,
 } from "@/lib/queries/customers";
+import { requireCashier } from "@/lib/session";
 import { isLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import type { ActionResult } from "@/types/order";
+
+/**
+ * The customer book. Both exports are public POST endpoints, and between them
+ * they can read out and rewrite every name, phone number and address the shop
+ * holds — so both open with the guard.
+ */
 
 function safeLocale(v: unknown): Locale {
   return typeof v === "string" && isLocale(v) ? v : defaultLocale;
@@ -18,12 +26,14 @@ function safeLocale(v: unknown): Locale {
 export async function searchCustomersAction(
   query: string,
 ): Promise<CustomerMatch[]> {
+  await requireCashier();
   return searchCustomers(query);
 }
 
 export async function upsertCustomer(
   raw: unknown,
 ): Promise<ActionResult<CustomerView>> {
+  await requireCashier();
   const locale = safeLocale((raw as { locale?: string })?.locale);
   const parsed = customerSchema.safeParse(raw);
   if (!parsed.success) {
@@ -39,55 +49,16 @@ export async function upsertCustomer(
 
   try {
     const customer = await db.$transaction(async (tx) => {
-      if (id) {
-        const updated = await tx.customer.update({
-          where: { id },
-          data: {
-            name,
-            phone,
-            email: email || null,
-            notes: notes || null,
-          },
-        });
-        if (address) {
-          const existing = await tx.customerAddress.findFirst({
-            where: { customerId: id, isDefault: true },
+      const saved = id
+        ? await tx.customer.update({
+            where: { id },
+            data: { name, phone, email: email || null, notes: notes || null },
+          })
+        : await tx.customer.create({
+            data: { name, phone, email: email || null, notes: notes || null },
           });
-          if (existing) {
-            await tx.customerAddress.update({
-              where: { id: existing.id },
-              data: { ...address, notes: address.notes || null },
-            });
-          } else {
-            await tx.customerAddress.create({
-              data: {
-                ...address,
-                notes: address.notes || null,
-                isDefault: true,
-                customerId: id,
-              },
-            });
-          }
-        }
-        return updated;
-      }
-      return tx.customer.create({
-        data: {
-          name,
-          phone,
-          email: email || null,
-          notes: notes || null,
-          addresses: address
-            ? {
-                create: {
-                  ...address,
-                  notes: address.notes || null,
-                  isDefault: true,
-                },
-              }
-            : undefined,
-        },
-      });
+      if (address) await setDefaultAddress(tx, saved.id, address);
+      return saved;
     });
 
     revalidatePath(`/${locale}`);

@@ -134,7 +134,8 @@
     "delete": "Rechnung löschen",
     "deleteConfirm": "Diese geparkte Rechnung endgültig löschen?",
     "deleted": "Geparkte Rechnung gelöscht",
-    "missingItems": "Fortgesetzt — einige Artikel stehen nicht mehr auf der Karte"
+    "missingItems": "Fortgesetzt — einige Artikel stehen nicht mehr auf der Karte",
+    "missingOptions": "Fortgesetzt — einige Zusätze stehen nicht mehr auf der Karte, bitte Preis prüfen"
   },
   "customer": {
     "title": "Kunde",

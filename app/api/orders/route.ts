@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { onlineOrderSchema } from "@/lib/validations/menu";
 import { buildOrderData, nextOrderNumber, decimalFromCents } from "@/lib/orders";
+import { setDefaultAddress } from "@/lib/customers";
 import { getSettings } from "@/lib/queries/settings";
 import { locales, defaultLocale } from "@/lib/i18n/config";
 import { env } from "@/lib/env";
@@ -93,20 +94,15 @@ export async function POST(request: Request) {
     const order = await db.$transaction(async (tx) => {
       const customer = await tx.customer.upsert({
         where: { phone: data.customer.phone },
-        create: {
-          name: data.customer.name,
-          phone: data.customer.phone,
-          addresses: data.address
-            ? { create: { ...data.address, isDefault: true } }
-            : undefined,
-        },
+        create: { name: data.customer.name, phone: data.customer.phone },
         update: { name: data.customer.name },
-        include: { addresses: true },
+        select: { id: true },
       });
-      const address =
-        data.type === "DELIVERY"
-          ? customer.addresses.find((a) => a.isDefault) ?? customer.addresses[0]
-          : null;
+      // The address on the order, not the one that happened to be on file: a
+      // returning customer may have moved, or may never have had one at all.
+      const address = data.address
+        ? await setDefaultAddress(tx, customer.id, data.address)
+        : null;
       const orderNumber = await nextOrderNumber(tx, new Date());
       return tx.order.create({
         data: {
@@ -115,7 +111,7 @@ export async function POST(request: Request) {
           status: "PENDING",
           source: "ONLINE",
           customerId: customer.id,
-          addressId: address?.id ?? null,
+          addressId: data.type === "DELIVERY" ? address?.id ?? null : null,
           subtotal: decimalFromCents(built.totals.subtotal),
           discountAmount: decimalFromCents(built.totals.discountAmount),
           deliveryFee: decimalFromCents(built.totals.deliveryFee),

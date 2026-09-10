@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getCurrentCashier } from "@/lib/session";
+import { requireCashier } from "@/lib/session";
 import { getSettings } from "@/lib/queries/settings";
 import { getOrderForTicket, getDriverBoard } from "@/lib/queries/drivers";
 import { getDailyReport } from "@/lib/queries/orders";
@@ -29,7 +29,7 @@ import type { ActionResult } from "@/types/order";
  * On the shop machine the bytes go straight to the Windows spooler as a RAW job.
  * On a host with no printer — the cloud copy of this app — they are queued in
  * `PrintJob` instead, and the agent running beside the printer
- * (`scripts/print-agent.mjs`) pulls them and prints them there. Both paths
+ * (`print/print-agent.mjs`) pulls them and prints them there. Both paths
  * produce the same paper, because both send the same finished bytes.
  */
 
@@ -67,13 +67,13 @@ async function send(
 
 /** The printers Windows knows about — the Settings screen offers these. */
 export async function systemPrinters(): Promise<string[]> {
-  if (!(await getCurrentCashier())) return [];
+  await requireCashier();
   return listPrinters();
 }
 
 /** A slip to prove the printer is reachable and the width is right. */
 export async function printTest(): Promise<PrintOutcome> {
-  if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
+  await requireCashier();
   const ctx = await context();
   return send(testTicket(ctx), ctx.printerName, "Testdruck");
 }
@@ -85,7 +85,7 @@ export async function printOrderTicket(
   orderId: number,
   kind: TicketKind,
 ): Promise<PrintOutcome> {
-  if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
+  await requireCashier();
   // Fetched together: the database is a network hop away, and the settings do
   // not depend on the order.
   const [order, ctx] = await Promise.all([getOrderForTicket(orderId), context()]);
@@ -103,7 +103,7 @@ export async function printOrderTicket(
  * kitchen bon, as two separate jobs so the printer cuts between them.
  */
 export async function printNewOrder(orderId: number): Promise<PrintOutcome> {
-  if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
+  await requireCashier();
   const [order, ctx] = await Promise.all([getOrderForTicket(orderId), context()]);
   if (!order) return { ok: false, error: "genericError" };
 
@@ -120,7 +120,7 @@ export async function printNewOrder(orderId: number): Promise<PrintOutcome> {
 
 /** The day-close sheet, printed from the daily report screen. */
 export async function printDailyReport(): Promise<PrintOutcome> {
-  if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
+  await requireCashier();
   const [report, ctx] = await Promise.all([getDailyReport(), context()]);
   return send(dailyReportTicket(report, ctx), ctx.printerName, "Tagesbericht");
 }
@@ -132,7 +132,7 @@ export type BoardScope =
 
 /** The waiting column, exactly as the board shows it. */
 export async function printPendingReport(): Promise<PrintOutcome> {
-  if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
+  await requireCashier();
   const [board, ctx] = await Promise.all([getDriverBoard(), context()]);
   return send(
     pendingReportTicket(board.pending, board.pendingSum, ctx),
@@ -146,7 +146,7 @@ export async function printPendingReport(): Promise<PrintOutcome> {
  * than trusted from the browser, so the paper always matches the database.
  */
 export async function printProcessedReport(scope: BoardScope): Promise<PrintOutcome> {
-  if (!(await getCurrentCashier())) return { ok: false, error: "genericError" };
+  await requireCashier();
   const [board, ctx] = await Promise.all([getDriverBoard(), context()]);
   const dict = getDictionary(posLocale);
 

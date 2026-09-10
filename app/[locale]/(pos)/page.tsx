@@ -13,7 +13,7 @@ export default async function NewOrderPage({
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  await requireCashier(locale);
+  await requireCashier();
 
   const [categories, settings, heldOrders] = await Promise.all([
     getMenu(locale),

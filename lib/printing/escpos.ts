@@ -19,6 +19,12 @@ export const DEFAULT_COLUMNS = 48;
 /**
  * CP858 — the code page nearly every thermal printer ships with, and the one
  * that carries German. Anything outside it becomes `?` rather than mojibake.
+ *
+ * Arabic is outside it. That is deliberate and not worth fixing here: the paper
+ * is German (the till is, and the tickets fix their dictionary to `posLocale`),
+ * and printing Arabic would mean shipping a font to the printer rather than a
+ * code page. A customer whose name is entered in Arabic prints as `?????` — if
+ * that ever matters, enter the name in Latin letters.
  */
 const CP858: Record<string, number> = {
   "ä": 0x84, "ö": 0x94, "ü": 0x81, "Ä": 0x8e, "Ö": 0x99, "Ü": 0x9a,

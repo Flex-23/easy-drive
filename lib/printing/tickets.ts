@@ -80,9 +80,13 @@ const mapsLink = (address: string) =>
 /**
  * The order's place in the day, as printed on the number itself: `BE003QG` is
  * the third order of the business day. The kitchen calls this number out.
+ *
+ * The digits are matched by count rather than by a fixed three, so a shop that
+ * passes 999 orders in a day keeps a readable number on the bon instead of
+ * falling back to the whole code.
  */
 function daySequence(orderNumber: string): string {
-  return /^[A-Z]{2}(\d{3})[A-Z]{2}$/.exec(orderNumber)?.[1] ?? orderNumber;
+  return /^[A-Z]{2}(\d+)[A-Z]{2}$/.exec(orderNumber)?.[1] ?? orderNumber;
 }
 
 /**

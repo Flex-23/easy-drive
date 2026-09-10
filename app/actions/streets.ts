@@ -1,7 +1,7 @@
 "use server";
 
 import { getStreets } from "@/lib/data/streets";
-import { getPosSession } from "@/lib/auth/pos-session";
+import { requireCashier } from "@/lib/session";
 import type { StreetEntry } from "@/types/street";
 
 /**
@@ -10,6 +10,6 @@ import type { StreetEntry } from "@/types/street";
  * parses `streets.txt` once per process and the browser keeps one copy per tab.
  */
 export async function listStreets(): Promise<StreetEntry[]> {
-  if (!(await getPosSession())) return [];
+  await requireCashier();
   return getStreets();
 }

@@ -25,7 +25,7 @@ export default async function DailyReportPage({
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
-  await requireCashier(locale);
+  await requireCashier();
 
   const dict = getDictionary(locale);
   const report = await getDailyReport();

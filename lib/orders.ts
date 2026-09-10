@@ -7,7 +7,7 @@ import {
   centsToDecimalString,
   type Cents,
 } from "./pricing";
-import { businessDay } from "./business-day";
+import { businessDay, businessDayLabel } from "./business-day";
 import type { Locale } from "./i18n/config";
 import type { OrderLineInput } from "./validations/order";
 
@@ -130,17 +130,26 @@ function dayLetters(dayStart: Date): { prefix: string; suffix: string } {
  * letters. Short enough to call across the counter, and it carries the day with
  * it. The counter follows the 05:00 business day, so the first order after the
  * morning boundary is 001.
+ *
+ * The sequence comes from `OrderCounter`, not from counting orders. Counting is
+ * wrong twice over: recalling or deleting a parked bill lowers the count, so the
+ * next order is handed a number that already exists, and two terminals saving in
+ * the same instant read the same count and collide — either way `orderNumber` is
+ * unique, so a real sale fails at the till. The statement below moves the day's
+ * counter and reads the new value in one step, which the row lock makes atomic:
+ * every caller gets its own number, and no number is ever handed out twice.
  */
 export async function nextOrderNumber(
   tx: Prisma.TransactionClient,
   now: Date,
 ): Promise<string> {
-  const { start, end } = businessDay(now);
-  const { prefix, suffix } = dayLetters(start);
-  const count = await tx.order.count({
-    where: { createdAt: { gte: start, lt: end } },
-  });
-  return `${prefix}${String(count + 1).padStart(3, "0")}${suffix}`;
+  const day = businessDay(now);
+  const { prefix, suffix } = dayLetters(day.start);
+  const [{ last }] = await tx.$queryRaw<[{ last: number }]>`
+    INSERT INTO "OrderCounter" ("day", "last") VALUES (${businessDayLabel(day)}, 1)
+    ON CONFLICT ("day") DO UPDATE SET "last" = "OrderCounter"."last" + 1
+    RETURNING "last"`;
+  return `${prefix}${String(last).padStart(3, "0")}${suffix}`;
 }
 
 export { Dc as decimalFromCents };

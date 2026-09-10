@@ -4,8 +4,9 @@
  * the same module in both places, the two can never disagree.
  *
  * All arithmetic is done in integer minor units (euro cents) so there is never
- * any floating-point rounding error on money. Values are stored as Decimal(10,2)
- * in MySQL and converted to/from cents only at the boundaries (see helpers).
+ * any floating-point rounding error on money. Values are stored as
+ * `Decimal(10,2)` in PostgreSQL and converted to/from cents only at the
+ * boundaries (see helpers).
  * This module imports nothing environment-specific, so it is safe on the client.
  */
 

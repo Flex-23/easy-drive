@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Easy Drive
 
-## Getting Started
+Point of sale and delivery dispatch for a single restaurant. Two areas, one
+database:
 
-First, run the development server:
+- **The till** (`/de`) — take an order, park it, recall it, hand it to a driver,
+  settle it, close the day. German, no language switcher.
+- **The Master panel** (`/panel`) — the owner's screen: menu, staff, sales.
+  Arabic, its own sign-in, its own session.
+
+Both are Next.js App Router on PostgreSQL (Supabase) via Prisma. Receipts are
+printed as ESC/POS bytes, either straight to the shop's spooler or through the
+print agent when the app runs in the cloud.
+
+## Running it
 
 ```bash
+cp .env.example .env      # then fill in the two Supabase URLs
+npm install
+npx prisma migrate deploy
+npm run db:seed           # menu, settings, and the first admin PIN
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**[SETUP.md](SETUP.md) is the real documentation** — which Supabase pooler to
+point at (getting this wrong takes the site down), how to seed, how printing is
+wired, and what to do when something is wrong. Read it before deploying.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Path | What lives there |
+| --- | --- |
+| `app/[locale]/(pos)` | the till's screens |
+| `app/panel` | the Master panel |
+| `app/actions` | every mutation, as Server Actions |
+| `app/api` | the menu feed, online-order ingestion, the print queue |
+| `lib/pricing.ts` | all money maths, in integer cents |
+| `lib/orders.ts` | building an order from the database, and its number |
+| `lib/business-day.ts` | the 05:00-to-05:00 Berlin day the shop runs on |
+| `lib/printing` | ESC/POS bytes and the two ways they reach paper |
+| `print/` | the agent that prints at the shop for a cloud-hosted app |
 
-## Learn More
+## Two rules worth knowing before editing
 
-To learn more about Next.js, take a look at the following resources:
+Every `"use server"` export is a public POST endpoint. Next.js authenticates
+nobody on the way in and `proxy.ts` checks only that a cookie is *present*, so
+every action opens with `requireCashier()` (the till) or a `getPanelSession()`
+check returning `unauthorized` (the panel). There is no other gate.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Money is only ever integer cents, and only ever through `lib/pricing.ts` — the
+same module runs in the browser for the live cart and on the server for the row
+that gets written, which is what keeps the two from ever disagreeing.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Commands
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev      # development server
+npm run build    # production build
+npm run lint     # eslint
+npm run db:seed  # reseed menu, settings and staff
+npm run print    # the print agent (Windows, beside the printer)
+```

@@ -2,8 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireCashier } from "@/lib/session";
 import { isLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import type { ActionResult } from "@/types/order";
+
+/**
+ * The orders board's mutations: hand an order to a driver, settle it, void it.
+ * Each is a public POST endpoint, so each opens with `requireCashier()` — money
+ * moves through here, and nothing but that call stands in front of it.
+ */
 
 function safeLocale(v: string): Locale {
   return isLocale(v) ? v : defaultLocale;
@@ -22,6 +29,7 @@ export async function assignDriver(
   driverNumber: number,
   localeRaw: string,
 ): Promise<ActionResult<{ id: number }>> {
+  await requireCashier();
   const locale = safeLocale(localeRaw);
   if (!Number.isInteger(driverNumber) || driverNumber < 1 || driverNumber > 999) {
     return { ok: false, error: "genericError" };
@@ -49,6 +57,7 @@ async function settle(
   method: "CASH" | "ONLINE",
   localeRaw: string,
 ): Promise<ActionResult<{ id: number }>> {
+  await requireCashier();
   const locale = safeLocale(localeRaw);
   try {
     const order = await db.order.findUnique({
@@ -90,6 +99,7 @@ export async function cancelDriverOrder(
   orderId: number,
   localeRaw: string,
 ): Promise<ActionResult<{ id: number }>> {
+  await requireCashier();
   const locale = safeLocale(localeRaw);
   try {
     await db.order.update({

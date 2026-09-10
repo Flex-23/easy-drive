@@ -6,7 +6,7 @@ import { locales } from "@/lib/i18n/config";
 import { eurosToCents, centsToDecimalString } from "@/lib/pricing";
 import { categorySchema, menuItemSchema } from "@/lib/validations/master";
 import type { DishSizeInput } from "@/lib/validations/master";
-import { getPanelSession } from "@/lib/auth/master-session";
+import { getPanelSession, unauthorized } from "@/lib/auth/master-session";
 import type { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/order";
 
@@ -26,11 +26,6 @@ function isUniqueViolation(e: unknown): boolean {
   return (e as { code?: string } | null)?.code === "P2002";
 }
 
-/** Every action here is a public POST endpoint — the panel session is the gate. */
-async function denied(): Promise<boolean> {
-  return (await getPanelSession()) === null;
-}
-
 function fieldError(field: string, message: string): ActionResult<never> {
   return { ok: false, error: "genericError", fieldErrors: { [field]: message } };
 }
@@ -41,7 +36,7 @@ function fieldError(field: string, message: string): ActionResult<never> {
 export async function saveCategory(
   raw: unknown,
 ): Promise<ActionResult<{ id: number }>> {
-  if (await denied()) return { ok: false, error: "unauthorized" };
+  if (!(await getPanelSession())) return unauthorized;
   const parsed = categorySchema.safeParse(raw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -105,7 +100,7 @@ export async function saveCategory(
 export async function deleteCategory(
   id: number,
 ): Promise<ActionResult<{ id: number }>> {
-  if (await denied()) return { ok: false, error: "unauthorized" };
+  if (!(await getPanelSession())) return unauthorized;
   try {
     const items = await db.menuItem.count({ where: { categoryId: id } });
     if (items > 0) return { ok: false, error: "categoryNotEmpty" };
@@ -165,7 +160,7 @@ function sizeGroupData(sizes: DishSizeInput[], baseCents: number) {
 export async function saveMenuItem(
   raw: unknown,
 ): Promise<ActionResult<{ id: number }>> {
-  if (await denied()) return { ok: false, error: "unauthorized" };
+  if (!(await getPanelSession())) return unauthorized;
   const parsed = menuItemSchema.safeParse(raw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -279,7 +274,7 @@ export async function setMenuItemActive(
   id: number,
   isActive: boolean,
 ): Promise<ActionResult<{ id: number }>> {
-  if (await denied()) return { ok: false, error: "unauthorized" };
+  if (!(await getPanelSession())) return unauthorized;
   try {
     await db.menuItem.update({ where: { id }, data: { isActive } });
     revalidateMenu();
@@ -296,7 +291,7 @@ export async function setMenuItemActive(
 export async function deleteMenuItem(
   id: number,
 ): Promise<ActionResult<{ id: number }>> {
-  if (await denied()) return { ok: false, error: "unauthorized" };
+  if (!(await getPanelSession())) return unauthorized;
   try {
     const used = await db.orderLine.count({ where: { menuItemId: id } });
     if (used > 0) return { ok: false, error: "itemInUse" };

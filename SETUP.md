@@ -133,6 +133,10 @@ Every ticket goes straight to the thermal printer — see **Printing** below.
 Order numbers read **`BE003QG`** — two letters, the order's number within the
 business day, two letters. The letters are the day itself written in base 26, so
 no two days can produce the same pair and the number is unique without a lookup.
+The sequence in the middle comes from the `OrderCounter` row for that day, moved
+and read in one atomic statement: it is never derived by counting orders, so
+recalling a parked bill cannot lower it and two terminals saving at the same
+instant cannot be handed the same number.
 
 Each column prints. **Pending** prints the waiting orders with their count and
 grand total. **Processed** prints at the scope shown in its chip: *all* (a line
@@ -148,8 +152,13 @@ already paid for. The chip's ✕ clears the selection.
 for how many are waiting. Opening it lists each one with its items, and
 **Resume** brings the bill — items, customer and discount — back to the till and
 **unparks it there and then**, so the list only ever shows bills that are still
-waiting; re-parking it writes a fresh row. Its lines are rebuilt against today's
-menu, and anything since removed from the menu is dropped with a notice.
+waiting; re-parking it writes a fresh row. Unparking moves the row to `DRAFT`
+rather than deleting it, so a browser that never receives the answer does not
+cost anybody the bill — a `DRAFT` appears on no screen and in no report, and the
+bin button beside a parked bill stays the only thing that throws one away. Its
+lines are rebuilt against today's menu: anything since removed from the menu is
+dropped with a notice, and so is any size or extra that has since been renamed —
+that one changes the price, so the notice says to check it.
 
 The **Daily Report** always shows today and carries the KPI tiles and hourly
 revenue chart. Payments are reported as **cash or electronic** — a card
@@ -230,7 +239,7 @@ explicitly (DST included) rather than to the machine's clock.
 
 The app runs on the shop's own computer, so it prints there directly: every
 ticket is built as **ESC/POS** bytes and handed to the Windows spooler as a RAW
-job through `scripts/print-raw.ps1`. No browser dialog, no printer driver
+job through `print/print-raw.ps1`. No browser dialog, no printer driver
 rendering, no third-party print service — and nothing to install beyond the
 printer itself.
 

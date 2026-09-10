@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { hashPin } from "@/lib/auth/pin";
 import { locales } from "@/lib/i18n/config";
 import { staffSchema } from "@/lib/validations/master";
-import { getPanelSession } from "@/lib/auth/master-session";
+import { getPanelSession, unauthorized } from "@/lib/auth/master-session";
 import type { ActionResult } from "@/types/order";
 
 /**
@@ -13,11 +13,6 @@ import type { ActionResult } from "@/types/order";
  * table (admins first), so every mutation guards one invariant: the shop can
  * never be left without an active admin.
  */
-
-/** Every action here is a public POST endpoint — the panel session is the gate. */
-async function denied(): Promise<boolean> {
-  return (await getPanelSession()) === null;
-}
 
 function revalidateStaff() {
   for (const l of locales) revalidatePath(`/${l}`, "layout");
@@ -47,7 +42,7 @@ async function leavesNoAdmin(
 export async function saveStaff(
   raw: unknown,
 ): Promise<ActionResult<{ id: number }>> {
-  if (await denied()) return { ok: false, error: "unauthorized" };
+  if (!(await getPanelSession())) return unauthorized;
   const parsed = staffSchema.safeParse(raw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -103,7 +98,7 @@ export async function saveStaff(
 export async function deleteStaff(
   id: number,
 ): Promise<ActionResult<{ id: number }>> {
-  if (await denied()) return { ok: false, error: "unauthorized" };
+  if (!(await getPanelSession())) return unauthorized;
   try {
     const orders = await db.order.count({ where: { cashierId: id } });
     if (orders > 0) return { ok: false, error: "staffInUse" };

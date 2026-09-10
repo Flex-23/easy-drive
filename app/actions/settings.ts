@@ -3,12 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { settingsSchema } from "@/lib/validations/settings";
+import { requireCashier } from "@/lib/session";
 import { locales } from "@/lib/i18n/config";
 import type { ActionResult } from "@/types/order";
 
+/**
+ * The shop's settings, written from the till's Settings screen. This is a
+ * public POST endpoint carrying the VAT rate and the delivery fee, so the guard
+ * is not optional.
+ */
 export async function updateSettings(
   raw: unknown,
 ): Promise<ActionResult<{ defaultLocale: string }>> {
+  await requireCashier();
   const parsed = settingsSchema.safeParse(raw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};

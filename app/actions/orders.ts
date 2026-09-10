@@ -7,7 +7,7 @@ import { getSettings } from "@/lib/queries/settings";
 import { getOrderForResume } from "@/lib/queries/orders";
 import { getOrderForTicket, type DriverOrder } from "@/lib/queries/drivers";
 import { getCustomer } from "@/lib/queries/customers";
-import { getCurrentCashier } from "@/lib/session";
+import { requireCashier } from "@/lib/session";
 import { holdOrderSchema } from "@/lib/validations/order";
 import { isLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import type { ActionResult } from "@/types/order";
@@ -28,13 +28,12 @@ function safeLocale(v: unknown): Locale {
 export async function holdOrder(
   raw: unknown,
 ): Promise<ActionResult<{ id: number }>> {
+  const cashier = await requireCashier();
   const locale = safeLocale((raw as { locale?: string })?.locale);
   const parsed = holdOrderSchema.safeParse(raw);
   if (!parsed.success) {
     return fieldErrorsFrom(parsed.error);
   }
-  const cashier = await getCurrentCashier();
-  if (!cashier) return { ok: false, error: "genericError" };
 
   const settings = await getSettings();
   const deliveryCents =
@@ -85,11 +84,10 @@ export async function holdOrder(
 export async function createOrder(
   raw: unknown,
 ): Promise<ActionResult<{ id: number; ticket: DriverOrder | null }>> {
+  const cashier = await requireCashier();
   const locale = safeLocale((raw as { locale?: string })?.locale);
   const parsed = holdOrderSchema.safeParse(raw);
   if (!parsed.success) return fieldErrorsFrom(parsed.error);
-  const cashier = await getCurrentCashier();
-  if (!cashier) return { ok: false, error: "genericError" };
 
   const settings = await getSettings();
   const deliveryCents =
@@ -144,16 +142,23 @@ export async function createOrder(
  * bills that are genuinely still waiting.
  */
 export async function resumeOrder(id: number, localeRaw: string) {
+  await requireCashier();
   const locale = safeLocale(localeRaw);
-  const cashier = await getCurrentCashier();
-  if (!cashier) return { ok: false as const, error: "genericError" };
+
+  // Claim the bill before reading it, and claim it by moving it out of HELD
+  // rather than by deleting it. The update is the lock: a second terminal
+  // recalling the same bill at the same moment matches no rows and is told so.
+  // And because the row survives, a browser that never receives this answer
+  // costs nobody the bill — a recalled bill is a DRAFT, which no screen and no
+  // report counts. `deleteHeldOrder` stays the only way one is thrown away.
+  const claimed = await db.order.updateMany({
+    where: { id, status: "HELD" },
+    data: { status: "DRAFT" },
+  });
+  if (claimed.count === 0) return { ok: false as const, error: "genericError" };
 
   const data = await getOrderForResume(id, locale);
   if (!data) return { ok: false as const, error: "genericError" };
-
-  const removed = await db.order.deleteMany({ where: { id, status: "HELD" } });
-  // Someone else already took this bill off the board.
-  if (removed.count === 0) return { ok: false as const, error: "genericError" };
 
   const customer = data.customerId ? await getCustomer(data.customerId) : null;
   revalidateAll(locale);
@@ -165,9 +170,8 @@ export async function deleteHeldOrder(
   id: number,
   localeRaw: string,
 ): Promise<ActionResult<{ id: number }>> {
+  await requireCashier();
   const locale = safeLocale(localeRaw);
-  const cashier = await getCurrentCashier();
-  if (!cashier) return { ok: false, error: "genericError" };
   try {
     const res = await db.order.deleteMany({ where: { id, status: "HELD" } });
     if (res.count === 0) return { ok: false, error: "genericError" };

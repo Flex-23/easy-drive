@@ -1,7 +1,7 @@
-import { notFound, redirect } from "next/navigation";
-import { isLocale, type Locale } from "@/lib/i18n/config";
+import { notFound } from "next/navigation";
+import { isLocale } from "@/lib/i18n/config";
 import { getSettings } from "@/lib/queries/settings";
-import { getCurrentCashier } from "@/lib/session";
+import { requireCashier } from "@/lib/session";
 import { IconRail } from "@/components/pos/icon-rail";
 import { TopBar } from "@/components/pos/top-bar";
 import pkg from "@/package.json";
@@ -19,11 +19,8 @@ export default async function PosLayout({
 }) {
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
-  const locale: Locale = raw;
 
-  const cashier = await getCurrentCashier();
-  if (!cashier) redirect(`/${locale}/login`);
-
+  const cashier = await requireCashier();
   const settings = await getSettings();
 
   return (

@@ -13,7 +13,6 @@ export const orderLineSchema = z.object({
 });
 
 export const orderTypeSchema = z.enum(["DINE_IN", "PICKUP", "DELIVERY"]);
-export const paymentMethodSchema = z.enum(["CASH", "CARD", "ONLINE"]);
 
 const baseShape = {
   type: orderTypeSchema,
@@ -39,20 +38,14 @@ function checkBusinessRules(v: BaseOrderShape, ctx: z.RefinementCtx) {
   }
 }
 
-/** Draft/hold: no payment required. */
+/**
+ * What the till sends, whether the bill is being parked or rung up: both write
+ * the same row and neither takes payment. Payment is settled later, on the
+ * orders board, against an order that already exists.
+ */
 export const holdOrderSchema = z
   .object(baseShape)
   .superRefine((v, ctx) => checkBusinessRules(v, ctx));
 
-/** Checkout: payment required; cash sufficiency checked server-side post-total. */
-export const payOrderSchema = z
-  .object({
-    ...baseShape,
-    paymentMethod: paymentMethodSchema,
-    cashTenderedCents: z.number().int().min(0).optional().nullable(),
-  })
-  .superRefine((v, ctx) => checkBusinessRules(v, ctx));
-
 export type OrderLineInput = z.infer<typeof orderLineSchema>;
 export type HoldOrderInput = z.infer<typeof holdOrderSchema>;
-export type PayOrderInput = z.infer<typeof payOrderSchema>;

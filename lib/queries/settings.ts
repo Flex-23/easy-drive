@@ -31,19 +31,27 @@ export async function getSettings(): Promise<AppSettings> {
   const rows = await db.setting.findMany();
   const map = new Map(rows.map((r) => [r.key, r.value]));
   const loc = map.get("defaultLocale");
+
+  /**
+   * Settings are stored as text, so a hand-edited or half-written row can hold
+   * something that is not a number. Falling back beats letting `NaN` through:
+   * it would reach `computeOrderTotals` and then `Prisma.Decimal`, and every
+   * order would fail to save with nothing on screen to explain why.
+   */
+  const number = (key: string, fallback: number) => {
+    const value = Number(map.get(key));
+    return Number.isFinite(value) ? value : fallback;
+  };
+
   return {
     restaurantName: map.get("restaurantName") ?? DEFAULTS.restaurantName,
     defaultLocale: loc && isLocale(loc) ? loc : DEFAULTS.defaultLocale,
     currency: map.get("currency") ?? DEFAULTS.currency,
-    taxRate: map.has("taxRate") ? Number(map.get("taxRate")) : DEFAULTS.taxRate,
-    deliveryFee: map.has("deliveryFee")
-      ? Number(map.get("deliveryFee"))
-      : DEFAULTS.deliveryFee,
+    taxRate: number("taxRate", DEFAULTS.taxRate),
+    deliveryFee: number("deliveryFee", DEFAULTS.deliveryFee),
     receiptHeader: map.get("receiptHeader") ?? DEFAULTS.receiptHeader,
     receiptFooter: map.get("receiptFooter") ?? DEFAULTS.receiptFooter,
     printerName: map.get("printerName") ?? DEFAULTS.printerName,
-    printerColumns: map.has("printerColumns")
-      ? Number(map.get("printerColumns"))
-      : DEFAULTS.printerColumns,
+    printerColumns: number("printerColumns", DEFAULTS.printerColumns),
   };
 }

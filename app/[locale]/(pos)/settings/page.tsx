@@ -13,7 +13,7 @@ export default async function SettingsPage({
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
-  await requireCashier(locale);
+  await requireCashier();
 
   const dict = getDictionary(locale);
   const settings = await getSettings();

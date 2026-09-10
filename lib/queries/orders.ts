@@ -131,7 +131,10 @@ export interface DailyReport {
 export async function getDailyReport(date: Date = new Date()): Promise<DailyReport> {
   const { start, end } = businessDay(date);
   const orders = await db.order.findMany({
-    where: { createdAt: { gte: start, lt: end } },
+    // A DRAFT is a bill that was parked and then recalled to the cart: it was
+    // never rung up, and whatever the cashier does next writes a fresh row. It
+    // has no place on the day's sheet.
+    where: { createdAt: { gte: start, lt: end }, status: { not: "DRAFT" } },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,

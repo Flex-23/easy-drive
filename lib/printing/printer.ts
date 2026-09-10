@@ -9,12 +9,18 @@ import path from "node:path";
  *
  * The app serves the till from the shop's own computer, so it can hand a job
  * straight to the Windows spooler as RAW data — no browser dialog, no driver
- * rendering. Everything goes through PowerShell (`scripts/print-raw.ps1`), so
- * there is no native module to compile and nothing to install.
+ * rendering. Everything goes through PowerShell, so there is no native module to
+ * compile and nothing to install.
+ *
+ * The script is the one in `print/`, shared with the print agent rather than
+ * copied: it is the same P/Invoke wrapper doing the same thing for both halves
+ * of the app, and two copies of it would only drift apart. `print/` stays
+ * self-contained for its own sake — the folder is meant to be copied to the shop
+ * machine on its own — and this side simply reads from there.
  */
 
 const POWERSHELL = "powershell.exe";
-const SCRIPT = path.join(process.cwd(), "scripts", "print-raw.ps1");
+const SCRIPT = path.join(process.cwd(), "print", "print-raw.ps1");
 
 export type PrintResult = { ok: true } | { ok: false; error: string };
 

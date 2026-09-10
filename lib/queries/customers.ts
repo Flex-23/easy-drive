@@ -71,6 +71,9 @@ export interface CustomerMatch {
  * Type-ahead lookup. Digits search the phone, letters search the name — one
  * column instead of both, since a cashier is never searching for a name with a
  * keypad. Capped at eight rows; only the columns the list needs are read.
+ *
+ * The name search is case-insensitive (`ILIKE`, not `LIKE`): nobody types a
+ * capital into a till, and without this "ahmed" simply did not find "Ahmed".
  */
 export async function searchCustomers(query: string): Promise<CustomerMatch[]> {
   const q = query.trim();
@@ -78,7 +81,9 @@ export async function searchCustomers(query: string): Promise<CustomerMatch[]> {
   const byPhone = /^[0-9+/\s-]+$/.test(q);
 
   const customers = await db.customer.findMany({
-    where: byPhone ? { phone: { contains: q } } : { name: { contains: q } },
+    where: byPhone
+      ? { phone: { contains: q } }
+      : { name: { contains: q, mode: "insensitive" } },
     take: 8,
     orderBy: byPhone ? { phone: "asc" } : { name: "asc" },
     select: {

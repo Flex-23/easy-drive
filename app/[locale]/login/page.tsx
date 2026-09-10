@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
-import { getCurrentCashier } from "@/lib/session";
+import { getPosSession } from "@/lib/auth/pos-session";
 import { PosLoginForm } from "@/components/pos/pos-login-form";
 
 export default async function PosLoginPage({
@@ -10,7 +10,8 @@ export default async function PosLoginPage({
 }) {
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
-  if (await getCurrentCashier()) redirect(`/${raw}`);
+  // The reverse of the guard: already signed in, so skip the sign-in screen.
+  if (await getPosSession()) redirect(`/${raw}`);
 
   return <PosLoginForm />;
 }
