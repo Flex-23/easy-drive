@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+/*
+ * Easy Drive design tokens.
+ * Every color in the app comes from one of these tokens — no hardcoded hex
+ * outside this file. Changing --accent re-skins the whole product.
+ * Light and dark are both first-class and deliberately designed.
+ */
+
+:root,
+[data-theme="light"] {
+  --bg: #f4f2ed;
+  --surface: #ffffff;
+  /* Raised sits a shade above the page so cards read as objects on a surface. */
+  --surface-raised: #ffffff;
+  --surface-muted: #edeae3;
+  /* Sunken is for wells: inputs, tracks, anything the eye should read as inset. */
+  --surface-sunken: #e7e3da;
+  --border: #e2ddd3;
+  --border-strong: #cfc8bb;
+  --text: #1b1917;
+  --text-muted: #6b655c;
+  --text-faint: #989187;
+
+  --accent: #d9531e;
+  --accent-fg: #ffffff;
+  --accent-weak: rgba(217, 83, 30, 0.1);
+  --accent-strong: #bf4415;
+
+  --success: #2f8f4e;
+  --success-weak: rgba(47, 143, 78, 0.12);
+  --warning: #bd8410;
+  --warning-weak: rgba(189, 132, 16, 0.14);
+  --danger: #c8402f;
+  --danger-weak: rgba(200, 64, 47, 0.12);
+
+  /* Shadows carry the ground's warmth instead of neutral black, and all three
+     fall from the same direction so the light source stays believable. */
+  --shadow-sm: 0 1px 2px rgba(58, 46, 32, 0.07);
+  --shadow-md:
+    0 2px 6px rgba(58, 46, 32, 0.08), 0 8px 20px -6px rgba(58, 46, 32, 0.1);
+  --shadow-lg:
+    0 4px 12px rgba(58, 46, 32, 0.1), 0 24px 48px -12px rgba(58, 46, 32, 0.18);
+  --ring: rgba(217, 83, 30, 0.5);
+}
+
+[data-theme="dark"] {
+  --bg: #15130f;
+  --surface: #201e18;
+  --surface-raised: #282520;
+  --surface-muted: #221f1a;
+  --surface-sunken: #1a1814;
+  --border: #34302a;
+  --border-strong: #454037;
+  --text: #f2efe9;
+  --text-muted: #a49d90;
+  --text-faint: #766f64;
+
+  --accent: #ef6a34;
+  --accent-fg: #1a1610;
+  --accent-weak: rgba(239, 106, 52, 0.16);
+  --accent-strong: #f5814f;
+
+  --success: #4fb06d;
+  --success-weak: rgba(79, 176, 109, 0.16);
+  --warning: #d9a341;
+  --warning-weak: rgba(217, 163, 65, 0.16);
+  --danger: #e2634f;
+  --danger-weak: rgba(226, 99, 79, 0.16);
+
+  /* Dark shadows are deeper but still warm-tinted, never flat black. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md:
+    0 2px 6px rgba(0, 0, 0, 0.45), 0 8px 20px -6px rgba(0, 0, 0, 0.5);
+  --shadow-lg:
+    0 4px 12px rgba(0, 0, 0, 0.5), 0 24px 48px -12px rgba(0, 0, 0, 0.6);
+  --ring: rgba(239, 106, 52, 0.55);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-weak: var(--accent-weak);
+  --color-accent-strong: var(--accent-strong);
+  --color-success: var(--success);
+  --color-success-weak: var(--success-weak);
+  --color-warning: var(--warning);
+  --color-warning-weak: var(--warning-weak);
+  --color-danger: var(--danger);
+  --color-danger-weak: var(--danger-weak);
+
+  --font-latin: var(--font-inter);
+  --font-arabic: var(--font-arabic-family);
+
+  --radius-card: 0.75rem;
+  --radius-btn: 0.625rem;
+
+  --shadow-e1: var(--shadow-sm);
+  --shadow-e2: var(--shadow-md);
+  --shadow-e3: var(--shadow-lg);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  /* A single warm light source above the screen, so large empty areas have
+     somewhere to fall away to instead of reading as flat paint. */
+  background:
+    radial-gradient(
+      120vw 70vh at 50% -25vh,
+      color-mix(in oklab, var(--accent) 7%, transparent),
+      transparent 70%
+    ),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-latin), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Arabic type needs more line-height and its own optical family. */
+html[dir="rtl"] body {
+  font-family: var(--font-arabic), system-ui, sans-serif;
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+
+/* Headings earn their weight from tighter tracking, not just a bigger size —
+   and only in Latin: Arabic letterforms must never be tracked in. */
+html[dir="ltr"] :is(h1, h2, h3) {
+  letter-spacing: -0.015em;
+}
+:is(h1, h2, h3) {
+  text-wrap: balance;
+}
+
+::selection {
+  background: var(--accent-weak);
+  color: var(--text);
+}
+
+/* Tabular numerals everywhere numbers matter (prices, totals, clock, keypad). */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Calm, thin scrollbars that match the surface. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* Keyboard focus is a soft ring in the accent, offset so it never crowds the
+   element it marks. Pointer users never see it. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---- Micro-interactions (150–250ms, eased, direction-aware) ---- */
+@keyframes ed-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ed-scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes ed-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: ed-fade-in 0.18s ease-out both; }
+.animate-scale-in { animation: ed-scale-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.animate-slide-in { animation: ed-slide-in 0.2s ease-out both; }
+
+/* Every interactive surface answers the finger: it shifts under the pointer and
+   gives way under the press. Named properties only — never `all`. */
+.press {
+  transition:
+    transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+.card-lift {
+  transition:
+    transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+/* A touch screen has no pointer to hover with: without this guard the lift
+   sticks to the last card tapped, which on a till looks like a stuck button. */
+@media (hover: hover) {
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
+  }
+}
+.card-lift:active {
+  transform: translateY(0) scale(0.985);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The one way to say "this is the selected thing" — a ring, not a colour swap,
+   so the element keeps its own surface and stays readable. */
+.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset, var(--shadow-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .press:active { transform: none; }
+  .card-lift:hover,
+  .card-lift:active { transform: none; }
+}

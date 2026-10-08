@@ -1,0 +1,376 @@
+// Food Express — Prisma schema
+// PostgreSQL (Supabase). All money is Decimal(10,2); the database is UTF-8, so
+// Arabic and German store and sort correctly without further configuration.
+
+generator client {
+  provider = "prisma-client-js"
+  // `include` does not join: Prisma sends one query per relation level and
+  // stitches the rows together in memory. The menu is five levels deep, so
+  // loading it cost eight round trips to Frankfurt for 129 KB of data. This
+  // lets a query ask for `relationLoadStrategy: "join"` and come back in one.
+  previewFeatures = ["relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  // Queries go through the transaction-mode pooler (port 6543); migrations and
+  // introspection need a real session, so they take the direct URL (port 5432).
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Locale {
+  ar
+  de
+}
+
+enum SelectionType {
+  SINGLE
+  MULTIPLE
+}
+
+/// What an option group means. SIZE is the dish sold in several sizes — one
+/// group per item, each choice a size with its own price. EXTRA is everything
+/// else (dips, drinks, spice level).
+enum OptionGroupKind {
+  SIZE
+  EXTRA
+}
+
+enum OrderType {
+  DINE_IN
+  PICKUP
+  DELIVERY
+}
+
+enum OrderStatus {
+  DRAFT
+  HELD
+  PENDING
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderSource {
+  POS
+  ONLINE
+  PHONE
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+}
+
+enum UserRole {
+  ADMIN
+  CASHIER
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  LOCALE
+}
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  slug        String  @unique
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+  icon        String? // lucide icon name
+
+  items        MenuItem[]
+  translations CategoryTranslation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model CategoryTranslation {
+  id          Int     @id @default(autoincrement())
+  categoryId  Int
+  locale      Locale
+  name        String
+  description String? @db.Text
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
+}
+
+model MenuItem {
+  id         Int     @id @default(autoincrement())
+  itemNumber Int     @unique
+  basePrice  Decimal @db.Decimal(10, 2)
+  categoryId Int
+  isPopular  Boolean @default(false)
+  isActive   Boolean @default(true)
+  sortOrder  Int     @default(0)
+
+  category     Category              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  optionGroups OptionGroup[]
+  translations MenuItemTranslation[]
+  orderLines   OrderLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([isPopular])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model MenuItemTranslation {
+  id          Int     @id @default(autoincrement())
+  menuItemId  Int
+  locale      Locale
+  name        String
+  description String? @db.Text
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, locale])
+  @@index([locale])
+  @@index([name])
+}
+
+model OptionGroup {
+  id            Int             @id @default(autoincrement())
+  menuItemId    Int
+  kind          OptionGroupKind @default(EXTRA)
+  selectionType SelectionType
+  isRequired    Boolean         @default(false)
+  isCollapsible Boolean         @default(false)
+  sortOrder     Int             @default(0)
+
+  menuItem     MenuItem                 @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  choices      OptionChoice[]
+  translations OptionGroupTranslation[]
+
+  @@index([menuItemId])
+}
+
+model OptionGroupTranslation {
+  id            Int     @id @default(autoincrement())
+  optionGroupId Int
+  locale        Locale
+  name          String
+  description   String? @db.Text
+
+  optionGroup OptionGroup @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([optionGroupId, locale])
+  @@index([locale])
+}
+
+model OptionChoice {
+  id            Int     @id @default(autoincrement())
+  optionGroupId Int
+  priceDelta    Decimal @db.Decimal(10, 2) @default(0.00)
+  isDefault     Boolean @default(false)
+  sortOrder     Int     @default(0)
+
+  optionGroup  OptionGroup               @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+  translations OptionChoiceTranslation[]
+
+  @@index([optionGroupId])
+}
+
+model OptionChoiceTranslation {
+  id             Int     @id @default(autoincrement())
+  optionChoiceId Int
+  locale         Locale
+  name           String
+  description    String? @db.Text
+
+  optionChoice OptionChoice @relation(fields: [optionChoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([optionChoiceId, locale])
+  @@index([locale])
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  email     String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses CustomerAddress[]
+  orders    Order[]
+
+  @@index([phone])
+  @@index([name])
+}
+
+model CustomerAddress {
+  id          Int     @id @default(autoincrement())
+  customerId  Int
+  street      String
+  houseNumber String
+  area        String?
+  postalCode  String?
+  city        String
+  notes       String? @db.Text
+  isDefault   Boolean @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId])
+}
+
+model Order {
+  id             Int            @id @default(autoincrement())
+  /// `K7M2QX` — six capital letters or digits, all drawn fresh for every order.
+  /// It identifies the order and says nothing else about it.
+  orderNumber    String         @unique
+  /// The order's place in its business day: 1, 2, 3. What the kitchen calls out,
+  /// because `orderNumber` carries no order of its own. See `OrderCounter`.
+  daySequence    Int            @default(0)
+  type           OrderType
+  status         OrderStatus    @default(DRAFT)
+  source         OrderSource    @default(POS)
+  customerId     Int?
+  addressId      Int?
+  tableNumber    String?
+  subtotal       Decimal        @db.Decimal(10, 2) @default(0.00)
+  discountAmount Decimal        @db.Decimal(10, 2) @default(0.00)
+  deliveryFee    Decimal        @db.Decimal(10, 2) @default(0.00)
+  total          Decimal        @db.Decimal(10, 2) @default(0.00)
+  paymentMethod  PaymentMethod?
+  paidAt         DateTime?
+  driverNumber   Int?
+  cashierId      Int
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  customer Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  address  CustomerAddress? @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  cashier  User             @relation(fields: [cashierId], references: [id])
+  lines    OrderLine[]
+
+  @@index([status])
+  @@index([source])
+  @@index([type])
+  @@index([customerId])
+  @@index([cashierId])
+  @@index([createdAt])
+  @@index([driverNumber])
+}
+
+model OrderLine {
+  id               Int     @id @default(autoincrement())
+  orderId          Int
+  menuItemId       Int?
+  itemNameSnapshot String
+  unitPrice        Decimal @db.Decimal(10, 2)
+  quantity         Int
+  lineTotal        Decimal @db.Decimal(10, 2)
+  kitchenNotes     String? @db.Text
+
+  order    Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem?         @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  options  OrderLineOption[]
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model OrderLineOption {
+  id                Int     @id @default(autoincrement())
+  orderLineId       Int
+  groupNameSnapshot String
+  choiceNameSnapshot String
+  priceDelta        Decimal @db.Decimal(10, 2) @default(0.00)
+
+  orderLine OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+
+  @@index([orderLineId])
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String
+  /// What they sign in with. Stored lower-case; the form lower-cases too.
+  email       String   @unique
+  /// scrypt `salt:hash` (see lib/auth/password.ts) — never the plain text.
+  password    String
+  role        UserRole @default(CASHIER)
+  isActive    Boolean  @default(true)
+  avatarColor String   @default("#2563eb")
+  createdAt   DateTime @default(now())
+
+  orders Order[]
+
+  @@index([isActive])
+}
+
+/// A job waiting for the shop's printer.
+enum PrintJobStatus {
+  QUEUED
+  PRINTING
+  DONE
+  FAILED
+}
+
+/// One piece of paper, already built, waiting to be pulled by the agent that
+/// runs beside the printer. The cloud copy of the app has no printer attached,
+/// so it builds the slip and leaves it here; `print/print-agent.mjs` on the shop
+/// machine claims it and hands it to `print-receipt.ps1` to be drawn.
+///
+/// The slip is stored finished, not the recipe for it: the agent then needs no
+/// menu, no dictionary and no business rules — only a printer.
+model PrintJob {
+  id          Int            @id @default(autoincrement())
+  /// What this paper is, for whoever reads the queue. Never used to build it.
+  label       String
+  /// The finished document as UTF-8 JSON: `{ lines, images, widthMm }` — the
+  /// slip's directive lines (lib/printing/lines.ts), its QR codes as PNG bytes,
+  /// and the roll it was laid out for. The column stays opaque bytes because the
+  /// queue never looks inside; only the two printing paths parse it.
+  payload     Bytes
+  /// The printer chosen in Settings when the job was made.
+  printerName String
+  status      PrintJobStatus @default(QUEUED)
+  attempts    Int            @default(0)
+  error       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status, createdAt])
+}
+
+/// The day's tally of orders — 1, 2, 3 — which is the number the kitchen calls
+/// out when the food is ready.
+///
+/// It cannot be derived by counting rows: a bill that is recalled or thrown away
+/// would lower the count and two orders would be called the same number, and two
+/// terminals saving in the same instant would read the same count and collide.
+/// This row is the counter instead, claimed with a single atomic statement (see
+/// `nextDaySequence`), so it only ever moves forward.
+model OrderCounter {
+  /// The business day this counts, `YYYY-MM-DD` in Berlin (see business-day.ts).
+  day  String @id
+  /// The last sequence number handed out that day.
+  last Int    @default(0)
+}
+
+model Setting {
+  key       String      @id
+  value     String      @db.Text
+  type      SettingType @default(STRING)
+  updatedAt DateTime    @updatedAt
+}
