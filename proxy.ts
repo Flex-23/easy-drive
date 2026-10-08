@@ -1,12 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { locales, posLocale } from "@/lib/i18n/config";
-import { POS_COOKIE, PANEL_COOKIE } from "@/lib/auth/cookies";
+import { PANEL_COOKIE } from "@/lib/auth/cookies";
 
 /**
  * Routes the two areas of the app and keeps each in its own language: the till
  * is always German (`/de/…`), the Master panel is its own tree at `/panel`.
- * It also turns an unauthenticated visit into a plain redirect to the right
- * sign-in, before any page starts rendering.
+ *
+ * The till has no sign-in: anyone with the link walks straight in, so this only
+ * normalises the locale. The Master panel keeps its gate — an unauthenticated
+ * visit there is sent to its sign-in before any page renders.
  * (In Next.js 16 the former `middleware` file is named `proxy`.)
  */
 export function proxy(request: NextRequest) {
@@ -30,12 +32,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   if (localePrefix) {
-    // No cashier cookie, no till. The page guards verify the cookie for real;
-    // this only spares an unauthenticated visitor a half-rendered screen.
-    const loginPath = `/${localePrefix}/login`;
-    if (pathname !== loginPath && !request.cookies.has(POS_COOKIE)) {
-      return NextResponse.redirect(new URL(loginPath, request.url));
-    }
+    // Login is disabled on the till: no cookie check, the page opens. Every
+    // order is still attributed to a real cashier by requireCashier().
     return NextResponse.next();
   }
 

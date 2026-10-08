@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,11 +10,9 @@ import {
   Settings,
   Info,
   Headset,
-  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
-import { posLogout } from "@/app/actions/pos-auth";
 import { formatTime } from "@/lib/money";
 import { LogoMark, Wordmark } from "@/components/ui/logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -52,7 +50,7 @@ export function PosHeader({
 
       <NavTabs />
 
-      {/* end: support and version, then clock, theme, end of shift */}
+      {/* end: support and version, then clock and theme */}
       <div className="flex items-center justify-end gap-2">
         <div className="hidden items-center gap-1 2xl:flex">
           <a
@@ -69,7 +67,6 @@ export function PosHeader({
         </div>
         <Clock />
         <ThemeToggle />
-        <SignOutButton />
       </div>
     </header>
   );
@@ -157,22 +154,5 @@ function Clock() {
     >
       {now ? formatTime(now, locale) : "--:--:--"}
     </span>
-  );
-}
-
-/** Ends the cashier's shift and returns the terminal to the sign-in screen. */
-function SignOutButton() {
-  const { locale, dict } = useI18n();
-  const [pending, start] = useTransition();
-  return (
-    <button
-      onClick={() => start(() => posLogout(locale))}
-      disabled={pending}
-      aria-label={dict.login.logout}
-      title={dict.login.logout}
-      className="press flex size-9 items-center justify-center rounded-[var(--radius-btn)] text-text-faint hover:bg-surface-muted hover:text-danger disabled:opacity-50"
-    >
-      <LogOut className="size-[18px]" />
-    </button>
   );
 }
